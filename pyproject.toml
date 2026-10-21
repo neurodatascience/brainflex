@@ -14,7 +14,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "typer>=0.9",
+    "typer>=0.13",
 ]
 description = "Brain federated learning experiment"
 license = { file = "LICENSE" }
