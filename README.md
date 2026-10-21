@@ -6,9 +6,29 @@ Brain federated learning experiment.
 
 This project uses [uv](https://docs.astral.sh/uv/).
 
+### Installation
+
 ```bash
-uv sync                  # create .venv and install brainflex + dev dependencies
-uv run prek install      # set up git hooks for linting/formatting
-uv run prek run -a       # run linting/formatting on all files
-uv run pytest            # run tests
+uv sync
+```
+
+### Git hooks via `prek`
+
+```bash
+uv run prek install
+uv run prek run -a
+```
+
+### Tests
+
+```bash
+uv run pytest
+```
+
+### Documentation
+
+```bash
+uv run make -C docs html
+cd docs/_build/html
+python -m http.server
 ```

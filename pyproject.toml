@@ -24,7 +24,13 @@ requires-python = ">=3.11, <3.16"
 dynamic = ["version"]
 
 [dependency-groups]
-dev = [{ include-group = "test" }, "prek"]
+dev = [{ include-group = "doc" }, { include-group = "test" }, "prek"]
+doc = [
+    "furo",
+    "myst-parser>=5.1.0", # for the "alert" extension
+    "sphinx",
+    "sphinx-copybutton",
+]
 test = ["pytest-cov", "pytest>=6.0.0"]
 
 [project.scripts]
