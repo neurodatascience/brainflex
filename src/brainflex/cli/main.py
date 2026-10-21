@@ -1,10 +1,11 @@
-"""Command-line interface."""
+"""Main CLI entry point."""
 
 from typing import Annotated
 
 import typer
 
 from brainflex import __version__
+from brainflex.cli.init import init_cli
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -28,3 +29,6 @@ def main(
     ] = None,
 ) -> None:
     """Brain federated learning experiment."""
+
+
+app.command("init")(init_cli)

@@ -31,10 +31,14 @@ doc = [
     "sphinx",
     "sphinx-copybutton",
 ]
-test = ["pytest-cov", "pytest>=6.0.0"]
+test = [
+    "pytest-cov",
+    "pytest-mock",
+    "pytest>=6.0.0",
+]
 
 [project.scripts]
-brainflex = "brainflex.cli:app"
+brainflex = "brainflex.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/brainflex"]
