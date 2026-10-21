@@ -1,5 +1,7 @@
 # brainflex
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/neurodatascience/brainflex/main.svg)](https://results.pre-commit.ci/latest/github/neurodatascience/brainflex/main)
+
 Brain federated learning experiment.
 
 ## Development
