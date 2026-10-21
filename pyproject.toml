@@ -1,0 +1,49 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatch-vcs", "hatchling"]
+
+[project]
+authors = [{ name = "Michelle Wang" }]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "typer>=0.9",
+]
+description = "Brain federated learning experiment"
+license = { file = "LICENSE" }
+name = "brainflex"
+readme = "README.md"
+requires-python = ">=3.11, <3.16"
+dynamic = ["version"]
+
+[dependency-groups]
+dev = [{ include-group = "test" }, "prek"]
+test = ["pytest-cov", "pytest>=6.0.0"]
+
+[project.scripts]
+brainflex = "brainflex.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/brainflex"]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/brainflex/_version.py"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.codespell]
+skip = '.git,.github,pyproject.toml,uv.lock'
+
+[tool.pytest.ini_options]
+addopts = "--color=yes -ra -q -vv"
+testpaths = ["tests/"]
+minversion = "6.0"
+xfail_strict = true

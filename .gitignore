@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# hatch-vcs version file
+src/brainflex/_version.py

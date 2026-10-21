@@ -1,0 +1,30 @@
+"""Command-line interface."""
+
+from typing import Annotated
+
+import typer
+
+from brainflex import __version__
+
+app = typer.Typer(no_args_is_help=True)
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(__version__)
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: Annotated[
+        bool | None,
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show the version and exit.",
+        ),
+    ] = None,
+) -> None:
+    """Brain federated learning experiment."""
