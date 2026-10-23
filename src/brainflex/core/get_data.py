@@ -15,6 +15,7 @@ from brainflex.utils.constants import (
     BIDS_SUBJECT_PREFIX,
     BRAINFLEX_DIRNAME,
     COL_PARTICIPANT_ID,
+    COL_SESSION_ID,
     DATA_DIRNAME,
     DERIVATIVES_BUCKET,
     DERIVATIVES_REGION,
@@ -124,8 +125,10 @@ def _get_freesurfer(
     download(store, keys_to_paths)
 
 
-def _write_pheno(layout: DatasetLayout) -> None:
-    """Copy participants.tsv to the tabular directory, with sub- prefixed IDs.
+def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
+    """Copy participants.tsv to the tabular directory, with a session ID column.
+
+    Participants without BIDS imaging data get an empty session ID.
 
     Also copies participants.json, if available.
     """
@@ -138,11 +141,11 @@ def _write_pheno(layout: DatasetLayout) -> None:
         fieldnames = reader.fieldnames
         rows = list(reader)
 
-    # Neurobagel requires the sub- prefix
+    fieldnames = [COL_PARTICIPANT_ID, COL_SESSION_ID] + [
+        col for col in fieldnames if col not in (COL_PARTICIPANT_ID, COL_SESSION_ID)
+    ]
     for row in rows:
-        participant_id = row[COL_PARTICIPANT_ID]
-        if not participant_id.startswith(BIDS_SUBJECT_PREFIX):
-            row[COL_PARTICIPANT_ID] = f"{BIDS_SUBJECT_PREFIX}{participant_id}"
+        row[COL_SESSION_ID] = session_ids.get(row[COL_PARTICIPANT_ID], "")
 
     layout.dpath_tabular.mkdir(parents=True, exist_ok=True)
     with (layout.dpath_tabular / PHENO_FILENAME).open("w", newline="") as file:
@@ -207,5 +210,5 @@ def get_data(
     layout = DatasetLayout(dpath_root=dpath_study)
     session_ids = _get_session_ids(layout.dpath_bids)
     _get_freesurfer(dataset_id, layout, session_ids, full=full_freesurfer)
-    _write_pheno(layout)
+    _write_pheno(layout, session_ids)
     return dpath_study

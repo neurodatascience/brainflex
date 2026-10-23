@@ -22,7 +22,7 @@ def _raw_objects(subject_dirs: list[str]) -> dict[tuple[str, str], bytes]:
         (OPENNEURO_BUCKET, f"{DATASET_ID}/dataset_description.json"): b"{}",
         (OPENNEURO_BUCKET, f"{DATASET_ID}/participants.json"): b'{"age": {}}',
         (OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv"): (
-            b"participant_id\tage\n01\t20\nsub-02\t30\n"
+            b"participant_id\tage\nsub-01\t20\nsub-02\t30\nsub-03\t40\n"
         ),
         (OPENNEURO_BUCKET, f"{DATASET_ID}/derivatives/file.txt"): b"skipped",
         (OPENNEURO_BUCKET, f"{DATASET_ID}/sub-01/"): b"",
@@ -110,7 +110,13 @@ class TestGetData:
         assert not (dpath_output / "sub-01/mri").exists()
 
         pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
-        assert pheno == "participant_id\tage\nsub-01\t20\nsub-02\t30\n"
+        # sub-03 has no imaging data
+        assert pheno == (
+            "participant_id\tsession_id\tage\n"
+            "sub-01\tses-unnamed\t20\n"
+            "sub-02\tses-unnamed\t30\n"
+            "sub-03\t\t40\n"
+        )
         pheno_json = (dpath_study / "tabular" / "pheno.json").read_text()
         assert pheno_json == '{"age": {}}'
 
@@ -177,6 +183,9 @@ class TestGetData:
         dpath_output = dpath_study / "derivatives/freesurfer/6.0.1/output"
         assert (dpath_output / "ses-01/sub-01/stats/aseg.stats").is_file()
         assert (dpath_output / "ses-02/sub-02/stats/aseg.stats").is_file()
+        pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
+        assert "sub-01\tses-01\t" in pheno
+        assert "sub-02\tses-02\t" in pheno
 
     def test_multiple_sessions(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
         mock_s3.clear()
