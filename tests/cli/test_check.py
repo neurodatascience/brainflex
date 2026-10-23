@@ -34,27 +34,41 @@ class TestCheck:
         assert result.exit_code == 0
         mock_check.assert_called_once_with(tmp_path.resolve())
 
-    def test_all_passed(self, runner: CliRunner, mock_check: MagicMock):
-        mock_check.return_value = [CheckResult("Docker", True, "found")]
+    @pytest.mark.parametrize(
+        ("check_results", "return_code", "expected_messages"),
+        [
+            ([CheckResult("Docker", True, "found")], 0, ["[OK] Docker: found"]),
+            (
+                [
+                    CheckResult("Docker", True, "found"),
+                    CheckResult("OS", False, "detected Darwin", required=False),
+                ],
+                0,
+                ["[OK] Docker: found", "[WARN] OS: detected Darwin"],
+            ),
+            (
+                [
+                    CheckResult("Docker", False, "not found"),
+                    CheckResult("OS", True, "detected Linux", required=False),
+                ],
+                1,
+                [
+                    "[FAIL] Docker: not found",
+                    "[OK] OS: detected Linux",
+                ],
+            ),
+        ],
+    )
+    def test_output(
+        self,
+        check_results,
+        return_code,
+        expected_messages,
+        runner: CliRunner,
+        mock_check: MagicMock,
+    ):
+        mock_check.return_value = check_results
         result = runner.invoke(app, ["check"])
-        assert result.exit_code == 0
-        assert "[OK] Docker: found" in result.stdout
-
-    def test_warning(self, runner: CliRunner, mock_check: MagicMock):
-        mock_check.return_value = [
-            CheckResult("Docker", True, "found"),
-            CheckResult("OS", False, "detected Darwin", required=False),
-        ]
-        result = runner.invoke(app, ["check"])
-        assert result.exit_code == 0
-        assert "[WARN] OS: detected Darwin" in result.stdout
-
-    def test_failure(self, runner: CliRunner, mock_check: MagicMock):
-        mock_check.return_value = [
-            CheckResult("Docker", False, "not found"),
-            CheckResult("OS", True, "detected Linux", required=False),
-        ]
-        result = runner.invoke(app, ["check"])
-        assert result.exit_code == 1
-        assert "[FAIL] Docker: not found" in result.stdout
-        assert "[OK] OS: detected Linux" in result.stdout
+        assert result.exit_code == return_code
+        for message in expected_messages:
+            assert message in result.stdout
