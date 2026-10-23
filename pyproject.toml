@@ -14,6 +14,8 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "nipoppy==0.4.7",
+    "obstore>=0.9,<0.10",
     "typer>=0.13",
 ]
 description = "Brain federated learning experiment"
