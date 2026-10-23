@@ -52,17 +52,26 @@ class TestCheckOs:
 
 
 class TestCheckDocker:
-    def test_found(self, mocker: MockerFixture):
-        mocker.patch(
-            "brainflex.core.check.shutil.which", return_value="/usr/bin/docker"
-        )
+    def test_ok(self, mock_run: MagicMock):
+        mock_run.return_value.stdout = "Docker version 27.0.0, build abc\n"
         result = _check_docker()
         assert result.passed
-        assert result.required
+        assert result.message == "Docker version 27.0.0, build abc"
+        assert mock_run.call_args.args[0] == ["docker", "--version"]
 
-    def test_not_found(self, mocker: MockerFixture):
-        mocker.patch("brainflex.core.check.shutil.which", return_value=None)
-        assert not _check_docker().passed
+    @pytest.mark.parametrize(
+        "error",
+        [
+            FileNotFoundError(),
+            subprocess.CalledProcessError(1, "docker"),
+            subprocess.TimeoutExpired("docker", 10),
+        ],
+    )
+    def test_fail(self, mock_run: MagicMock, error: Exception):
+        mock_run.side_effect = error
+        result = _check_docker()
+        assert not result.passed
+        assert result.required
 
 
 class TestCheckDockerDaemon:
@@ -117,9 +126,7 @@ class TestCheckInternet:
         "error", [urllib.error.URLError("no route"), TimeoutError()]
     )
     def test_fail(self, mocker: MockerFixture, error: Exception):
-        mocker.patch(
-            "brainflex.core.check.urllib.request.urlopen", side_effect=error
-        )
+        mocker.patch("brainflex.core.check.urllib.request.urlopen", side_effect=error)
         result = _check_internet()
         assert not result.passed
         assert not result.required

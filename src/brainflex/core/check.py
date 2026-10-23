@@ -1,7 +1,6 @@
 """Prerequisite checks."""
 
 import platform
-import shutil
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -11,7 +10,6 @@ from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
     CHECK_TIMEOUT,
     INTERNET_CHECK_URL,
-    STATUS_LOG_FILENAME,
 )
 
 
@@ -46,10 +44,12 @@ def _check_os() -> CheckResult:
 
 
 def _check_docker() -> CheckResult:
-    path = shutil.which("docker")
-    if path is None:
-        return CheckResult("Docker", False, "docker not found on PATH")
-    return CheckResult("Docker", True, f"found {path}")
+    result = _run(["docker", "--version"])
+    if result is None:
+        return CheckResult(
+            "Docker", False, "docker --version failed"
+        )
+    return CheckResult("Docker", True, result.stdout.strip())
 
 
 def _check_docker_daemon() -> CheckResult:
@@ -86,10 +86,10 @@ def _check_internet() -> CheckResult:
 
 
 def _check_project(root: Path) -> CheckResult:
-    status_log = root / BRAINFLEX_DIRNAME / STATUS_LOG_FILENAME
-    if not status_log.is_file():
+    brainflex_dir_path = root / BRAINFLEX_DIRNAME
+    if not brainflex_dir_path.is_dir():
         return CheckResult(
-            "Project", False, f"project not initialized: {status_log} not found"
+            "Project", False, f"project not initialized: {brainflex_dir_path} not found"
         )
     return CheckResult("Project", True, f"project initialized in {root}")
 
