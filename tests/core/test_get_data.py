@@ -1,4 +1,5 @@
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -66,10 +67,16 @@ def mock_s3(
     def fake_read(store: str, key: str) -> bytes:
         return objects[(store, key)]
 
-    def fake_download(store: str, keys_to_paths: dict[str, Path]) -> None:
+    def fake_download(
+        store: str,
+        keys_to_paths: dict[str, Path],
+        on_complete: Callable[[], None] | None = None,
+    ) -> None:
         for key, path in keys_to_paths.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(objects[(store, key)])
+            if on_complete is not None:
+                on_complete()
 
     module = "brainflex.core.get_data"
     mocker.patch(f"{module}.make_store", side_effect=lambda bucket, region: bucket)

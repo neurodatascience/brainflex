@@ -50,3 +50,15 @@ class TestDownload:
         download(MagicMock(), keys_to_paths)
         assert (tmp_path / "a.txt").read_bytes() == b"a"
         assert (tmp_path / "b" / "c.txt").read_bytes() == b"b/c"
+
+    def test_download_on_complete(self, mocker: MockerFixture, tmp_path: Path):
+        async def get_async(store, key):
+            response = MagicMock()
+            response.bytes_async = AsyncMock(return_value=key.encode())
+            return response
+
+        mocker.patch("brainflex.utils.s3.obstore.get_async", side_effect=get_async)
+        on_complete = MagicMock()
+        keys_to_paths = {"a": tmp_path / "a.txt", "b": tmp_path / "b.txt"}
+        download(MagicMock(), keys_to_paths, on_complete=on_complete)
+        assert on_complete.call_count == 2

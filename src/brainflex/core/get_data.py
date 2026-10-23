@@ -9,6 +9,15 @@ from pathlib import Path
 
 from nipoppy.env import FAKE_SESSION_ID
 from nipoppy.layout import DatasetLayout
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
 from brainflex.utils.constants import (
     BIDS_SESSION_PREFIX,
@@ -32,6 +41,20 @@ from brainflex.utils.constants import (
 )
 from brainflex.utils.s3 import download, list_keys, make_store, read
 
+console = Console(stderr=True)
+
+
+def _progress() -> Progress:
+    """Create a file-count progress bar."""
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    )
+
 
 def _stage_bids(dataset_id: str, dpath: Path, full: bool = False) -> None:
     """Download top-level BIDS files and subject files.
@@ -45,6 +68,7 @@ def _stage_bids(dataset_id: str, dpath: Path, full: bool = False) -> None:
         raise ValueError(f"Dataset not found on OpenNeuro: {dataset_id}")
 
     keys_to_paths = {}
+    fpaths_placeholder = []
     for key in keys:
         relpath = key.removeprefix(prefix)
         if relpath.endswith("/"):
@@ -52,11 +76,19 @@ def _stage_bids(dataset_id: str, dpath: Path, full: bool = False) -> None:
         if "/" not in relpath or (full and relpath.startswith(BIDS_SUBJECT_PREFIX)):
             keys_to_paths[key] = dpath / relpath
         elif relpath.startswith(BIDS_SUBJECT_PREFIX):
-            fpath = dpath / relpath
+            fpaths_placeholder.append(dpath / relpath)
+
+    dpath.mkdir(parents=True, exist_ok=True)
+    with _progress() as progress:
+        task = progress.add_task(
+            "Downloading BIDS data",
+            total=len(keys_to_paths) + len(fpaths_placeholder),
+        )
+        for fpath in fpaths_placeholder:
             fpath.parent.mkdir(parents=True, exist_ok=True)
             fpath.touch()
-    dpath.mkdir(parents=True, exist_ok=True)
-    download(store, keys_to_paths)
+            progress.advance(task)
+        download(store, keys_to_paths, on_complete=lambda: progress.advance(task))
 
 
 def _get_session_ids(dpath_bids: Path) -> dict[str, str]:
@@ -122,7 +154,11 @@ def _get_freesurfer(
         relpath = key.removeprefix(prefix)
         subject = relpath.split("/", 1)[0]
         keys_to_paths[key] = dpath_output / session_ids[subject] / relpath
-    download(store, keys_to_paths)
+    with _progress() as progress:
+        task = progress.add_task(
+            "Downloading FreeSurfer derivatives", total=len(keys_to_paths)
+        )
+        download(store, keys_to_paths, on_complete=lambda: progress.advance(task))
 
 
 def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
@@ -192,20 +228,21 @@ def get_data(
     with tempfile.TemporaryDirectory(dir=dpath_brainflex) as dpath_tmp:
         dpath_staging = Path(dpath_tmp) / dataset_id
         _stage_bids(dataset_id, dpath_staging, full=full_rawbids)
-        subprocess.run(
-            [
-                "nipoppy",
-                "init",
-                "--dataset",
-                str(dpath_study),
-                "--bids-source",
-                str(dpath_staging),
-                "--mode",
-                "move",
-            ],
-            check=True,
-            capture_output=True,
-        )
+        with console.status("Initializing Nipoppy study"):
+            subprocess.run(
+                [
+                    "nipoppy",
+                    "init",
+                    "--dataset",
+                    str(dpath_study),
+                    "--bids-source",
+                    str(dpath_staging),
+                    "--mode",
+                    "move",
+                ],
+                check=True,
+                capture_output=True,
+            )
 
     layout = DatasetLayout(dpath_root=dpath_study)
     session_ids = _get_session_ids(layout.dpath_bids)

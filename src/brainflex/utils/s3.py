@@ -1,6 +1,7 @@
 """Anonymous access to public S3 buckets."""
 
 import asyncio
+from collections.abc import Callable
 from pathlib import Path
 
 import obstore
@@ -28,9 +29,15 @@ def read(store: S3Store, key: str) -> bytes:
 
 
 def download(
-    store: S3Store, keys_to_paths: dict[str, Path], max_concurrency: int = 16
+    store: S3Store,
+    keys_to_paths: dict[str, Path],
+    max_concurrency: int = 16,
+    on_complete: Callable[[], None] | None = None,
 ) -> None:
-    """Download objects to local paths concurrently."""
+    """Download objects to local paths concurrently.
+
+    If given, ``on_complete`` is called after each object is written.
+    """
 
     async def _download_all() -> None:
         semaphore = asyncio.Semaphore(max_concurrency)
@@ -41,6 +48,8 @@ def download(
                 content = await response.bytes_async()
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(bytes(content))
+            if on_complete is not None:
+                on_complete()
 
         await asyncio.gather(
             *(_download_one(key, path) for key, path in keys_to_paths.items())
