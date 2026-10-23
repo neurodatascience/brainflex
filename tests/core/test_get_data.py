@@ -116,6 +116,19 @@ class TestGetData:
             "status_log.tsv"
         ]
 
+    def test_full_rawbids(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
+        dpath_study = get_data(root, DATASET_ID, full_rawbids=True)
+        fpath = dpath_study / "bids/sub-01/anat/sub-01_T1w.nii.gz"
+        assert fpath.read_bytes() == b"image"
+        assert not (dpath_study / "bids/derivatives").exists()
+
+    def test_full_freesurfer(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
+        dpath_study = get_data(root, DATASET_ID, full_freesurfer=True)
+        dpath_output = dpath_study / "derivatives/freesurfer/6.0.1/output/ses-unnamed"
+        assert sorted(p.name for p in dpath_output.iterdir()) == ["sub-01", "sub-02"]
+        assert (dpath_output / "sub-01/mri/T1.mgz").read_bytes() == b"skipped"
+        assert (dpath_output / "sub-01/stats/aseg.stats").is_file()
+
     @pytest.mark.parametrize(
         ("build_stamp", "version"),
         [

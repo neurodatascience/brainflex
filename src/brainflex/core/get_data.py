@@ -30,8 +30,11 @@ from brainflex.utils.constants import (
 from brainflex.utils.s3 import download, list_keys, make_store, read
 
 
-def _stage_bids(dataset_id: str, dpath: Path) -> None:
-    """Download top-level BIDS files and create empty placeholders for the rest."""
+def _stage_bids(dataset_id: str, dpath: Path, full: bool = False) -> None:
+    """Download top-level BIDS files and subject files.
+
+    Unless ``full`` is True, subject files are empty placeholders.
+    """
     store = make_store(OPENNEURO_BUCKET, OPENNEURO_REGION)
     prefix = f"{dataset_id}/"
     keys = list_keys(store, prefix)
@@ -43,7 +46,7 @@ def _stage_bids(dataset_id: str, dpath: Path) -> None:
         relpath = key.removeprefix(prefix)
         if relpath.endswith("/"):
             continue
-        if "/" not in relpath:
+        if "/" not in relpath or (full and relpath.startswith(BIDS_SUBJECT_PREFIX)):
             keys_to_paths[key] = dpath / relpath
         elif relpath.startswith(BIDS_SUBJECT_PREFIX):
             fpath = dpath / relpath
@@ -74,9 +77,15 @@ def _get_session_ids(dpath_bids: Path) -> dict[str, str]:
 
 
 def _get_freesurfer(
-    dataset_id: str, layout: DatasetLayout, session_ids: dict[str, str]
+    dataset_id: str,
+    layout: DatasetLayout,
+    session_ids: dict[str, str],
+    full: bool = False,
 ) -> None:
-    """Download FreeSurfer outputs into the Nipoppy derivatives directory."""
+    """Download FreeSurfer outputs into the Nipoppy derivatives directory.
+
+    Unless ``full`` is True, only the stats/ and scripts/ subdirectories are kept.
+    """
     store = make_store(DERIVATIVES_BUCKET, DERIVATIVES_REGION)
     prefix = FREESURFER_PREFIX.format(dataset_id=dataset_id) + "/"
 
@@ -87,7 +96,7 @@ def _get_freesurfer(
         if (
             len(parts) > 2
             and parts[0] in session_ids
-            and parts[1] in FREESURFER_SUBDIRS
+            and (full or parts[1] in FREESURFER_SUBDIRS)
         ):
             keys.append(key)
     if not keys:
@@ -139,14 +148,21 @@ def _write_pheno(layout: DatasetLayout) -> None:
         writer.writerows(rows)
 
 
-def get_data(root: Path, dataset_id: str, overwrite: bool = False) -> Path:
+def get_data(
+    root: Path,
+    dataset_id: str,
+    overwrite: bool = False,
+    full_rawbids: bool = False,
+    full_freesurfer: bool = False,
+) -> Path:
     """Download an OpenNeuro dataset and format it as a Nipoppy study.
 
     Dataset must be cross-sectional (with or without session-level subdirectories)
     and have FreeSurfer derivative data.
 
-    To optimize disk space, raw BIDS imaging files are empty placeholders, and
-    FreeSurfer outputs contain stats/ and scripts/ only.
+    To optimize disk space, raw BIDS imaging files are empty placeholders unless
+    ``full_rawbids`` is True, and FreeSurfer outputs contain stats/ and scripts/
+    only unless ``full_freesurfer`` is True.
 
     Raises FileExistsError if the study already exists and ``overwrite`` is False.
     Returns the path to the Nipoppy study.
@@ -161,7 +177,7 @@ def get_data(root: Path, dataset_id: str, overwrite: bool = False) -> Path:
     dpath_brainflex.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=dpath_brainflex) as dpath_tmp:
         dpath_staging = Path(dpath_tmp) / dataset_id
-        _stage_bids(dataset_id, dpath_staging)
+        _stage_bids(dataset_id, dpath_staging, full=full_rawbids)
         subprocess.run(
             [
                 "nipoppy",
@@ -179,6 +195,6 @@ def get_data(root: Path, dataset_id: str, overwrite: bool = False) -> Path:
 
     layout = DatasetLayout(dpath_root=dpath_study)
     session_ids = _get_session_ids(layout.dpath_bids)
-    _get_freesurfer(dataset_id, layout, session_ids)
+    _get_freesurfer(dataset_id, layout, session_ids, full=full_freesurfer)
     _write_pheno(layout)
     return dpath_study

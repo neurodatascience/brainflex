@@ -31,10 +31,30 @@ def get_data_cli(
             help="Replace the dataset if it already exists.",
         ),
     ] = False,
+    full_rawbids: Annotated[
+        bool,
+        typer.Option(
+            "--full-rawbids",
+            help="Download raw BIDS imaging files instead of empty placeholders.",
+        ),
+    ] = False,
+    full_freesurfer: Annotated[
+        bool,
+        typer.Option(
+            "--full-freesurfer",
+            help="Download all FreeSurfer outputs instead of stats/ and scripts/ only.",
+        ),
+    ] = False,
 ) -> None:
     """Download an OpenNeuro dataset and format it as a Nipoppy study."""
     try:
-        dpath_study = get_data(path, dataset_id, overwrite=overwrite)
+        dpath_study = get_data(
+            path,
+            dataset_id,
+            overwrite=overwrite,
+            full_rawbids=full_rawbids,
+            full_freesurfer=full_freesurfer,
+        )
     except FileExistsError as e:
         typer.echo(f"{e}. Use --overwrite to replace it.", err=True)
         raise typer.Exit(1) from e

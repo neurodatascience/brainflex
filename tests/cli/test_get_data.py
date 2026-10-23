@@ -24,7 +24,11 @@ class TestGetData:
         assert result.exit_code == 0
         assert "Downloaded ds000001" in result.stdout
         mock_get_data.assert_called_once_with(
-            tmp_path.resolve(), "ds000001", overwrite=False
+            tmp_path.resolve(),
+            "ds000001",
+            overwrite=False,
+            full_rawbids=False,
+            full_freesurfer=False,
         )
 
     def test_default_path(
@@ -38,7 +42,11 @@ class TestGetData:
         result = runner.invoke(app, ["get-data", "ds000001"])
         assert result.exit_code == 0
         mock_get_data.assert_called_once_with(
-            tmp_path.resolve(), "ds000001", overwrite=False
+            tmp_path.resolve(),
+            "ds000001",
+            overwrite=False,
+            full_rawbids=False,
+            full_freesurfer=False,
         )
 
     @pytest.mark.parametrize("flag", ["--overwrite", "--force", "-f"])
@@ -48,8 +56,28 @@ class TestGetData:
         result = runner.invoke(app, ["get-data", "ds000001", str(tmp_path), flag])
         assert result.exit_code == 0
         mock_get_data.assert_called_once_with(
-            tmp_path.resolve(), "ds000001", overwrite=True
+            tmp_path.resolve(),
+            "ds000001",
+            overwrite=True,
+            full_rawbids=False,
+            full_freesurfer=False,
         )
+
+    @pytest.mark.parametrize(
+        ("flag", "kwarg"),
+        [("--full-rawbids", "full_rawbids"), ("--full-freesurfer", "full_freesurfer")],
+    )
+    def test_full(
+        self,
+        runner: CliRunner,
+        mock_get_data: MagicMock,
+        tmp_path: Path,
+        flag: str,
+        kwarg: str,
+    ):
+        result = runner.invoke(app, ["get-data", "ds000001", str(tmp_path), flag])
+        assert result.exit_code == 0
+        assert mock_get_data.call_args.kwargs[kwarg] is True
 
     def test_already_exists(
         self, runner: CliRunner, mock_get_data: MagicMock, tmp_path: Path
