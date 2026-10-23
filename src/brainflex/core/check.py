@@ -46,9 +46,7 @@ def _check_os() -> CheckResult:
 def _check_docker() -> CheckResult:
     result = _run(["docker", "--version"])
     if result is None:
-        return CheckResult(
-            "Docker", False, "docker --version failed"
-        )
+        return CheckResult("Docker", False, "docker --version failed")
     return CheckResult("Docker", True, result.stdout.strip())
 
 
