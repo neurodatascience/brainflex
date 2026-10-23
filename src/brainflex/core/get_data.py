@@ -25,7 +25,9 @@ from brainflex.utils.constants import (
     OPENNEURO_BUCKET,
     OPENNEURO_REGION,
     PARTICIPANTS_FILENAME,
+    PARTICIPANTS_JSON_FILENAME,
     PHENO_FILENAME,
+    PHENO_JSON_FILENAME,
 )
 from brainflex.utils.s3 import download, list_keys, make_store, read
 
@@ -123,7 +125,10 @@ def _get_freesurfer(
 
 
 def _write_pheno(layout: DatasetLayout) -> None:
-    """Copy participants.tsv to the tabular directory, with sub- prefixed IDs."""
+    """Copy participants.tsv to the tabular directory, with sub- prefixed IDs.
+
+    Also copies participants.json, if available.
+    """
     fpath_participants = layout.dpath_bids / PARTICIPANTS_FILENAME
     if not fpath_participants.is_file():
         raise ValueError(f"No {PARTICIPANTS_FILENAME} found in {layout.dpath_bids}")
@@ -146,6 +151,12 @@ def _write_pheno(layout: DatasetLayout) -> None:
         )
         writer.writeheader()
         writer.writerows(rows)
+
+    fpath_participants_json = layout.dpath_bids / PARTICIPANTS_JSON_FILENAME
+    if fpath_participants_json.is_file():
+        shutil.copyfile(
+            fpath_participants_json, layout.dpath_tabular / PHENO_JSON_FILENAME
+        )
 
 
 def get_data(

@@ -20,6 +20,7 @@ BUILD_STAMP = b"freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1-f53a55a\n"
 def _raw_objects(subject_dirs: list[str]) -> dict[tuple[str, str], bytes]:
     objects = {
         (OPENNEURO_BUCKET, f"{DATASET_ID}/dataset_description.json"): b"{}",
+        (OPENNEURO_BUCKET, f"{DATASET_ID}/participants.json"): b'{"age": {}}',
         (OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv"): (
             b"participant_id\tage\n01\t20\nsub-02\t30\n"
         ),
@@ -110,11 +111,21 @@ class TestGetData:
 
         pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
         assert pheno == "participant_id\tage\nsub-01\t20\nsub-02\t30\n"
+        pheno_json = (dpath_study / "tabular" / "pheno.json").read_text()
+        assert pheno_json == '{"age": {}}'
 
         # staging directory is cleaned up
         assert sorted(p.name for p in (root / ".brainflex").iterdir()) == [
             "status_log.tsv"
         ]
+
+    def test_no_participants_json(
+        self, mock_s3: dict[tuple[str, str], bytes], root: Path
+    ):
+        del mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.json")]
+        dpath_study = get_data(root, DATASET_ID)
+        assert (dpath_study / "tabular" / "pheno.tsv").is_file()
+        assert not (dpath_study / "tabular" / "pheno.json").exists()
 
     def test_full_rawbids(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
         dpath_study = get_data(root, DATASET_ID, full_rawbids=True)
