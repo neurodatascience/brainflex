@@ -132,6 +132,38 @@ class TestGetData:
             "status_log.tsv"
         ]
 
+    def test_participants_without_bids(
+        self,
+        mock_s3: dict[tuple[str, str], bytes],
+        root: Path,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        get_data(root, DATASET_ID)
+        assert "without BIDS data: ['sub-03']" in capsys.readouterr().err
+
+    def test_bids_without_participants(
+        self,
+        mock_s3: dict[tuple[str, str], bytes],
+        root: Path,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
+            b"participant_id\tage\nsub-01\t20\n"
+        )
+        get_data(root, DATASET_ID)
+        err = capsys.readouterr().err
+        assert "missing from participants.tsv: ['sub-02']" in err
+        assert "without BIDS data" not in err
+
+    def test_no_matching_participants(
+        self, mock_s3: dict[tuple[str, str], bytes], root: Path
+    ):
+        mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
+            b"participant_id\tage\nSZ_0113\t25\n"
+        )
+        with pytest.raises(ValueError, match="No participant IDs"):
+            get_data(root, DATASET_ID)
+
     def test_no_participants_json(
         self, mock_s3: dict[tuple[str, str], bytes], root: Path
     ):
@@ -193,6 +225,7 @@ class TestGetData:
         pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
         assert "sub-01\tses-01\t" in pheno
         assert "sub-02\tses-02\t" in pheno
+        assert "sub-03\t\t" in pheno
 
     def test_multiple_sessions(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
         mock_s3.clear()

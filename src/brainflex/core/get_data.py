@@ -164,7 +164,9 @@ def _get_freesurfer(
 def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
     """Copy participants.tsv to the tabular directory, with a session ID column.
 
-    Participants without BIDS imaging data get an empty session ID.
+    Participants without BIDS imaging data get an empty session ID. Warns if
+    participant IDs and BIDS subjects do not fully match, and raises ValueError
+    if none match.
 
     Also copies participants.json, if available.
     """
@@ -180,6 +182,25 @@ def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
     fieldnames = [COL_PARTICIPANT_ID, COL_SESSION_ID] + [
         col for col in fieldnames if col not in (COL_PARTICIPANT_ID, COL_SESSION_ID)
     ]
+
+    participant_ids = {row[COL_PARTICIPANT_ID] for row in rows}
+    if participant_ids.isdisjoint(session_ids):
+        raise ValueError(
+            f"No participant IDs in {PARTICIPANTS_FILENAME} match the BIDS subjects"
+        )
+    if missing := sorted(participant_ids - session_ids.keys()):
+        console.print(
+            f"[yellow]Warning:[/yellow] participants in {PARTICIPANTS_FILENAME}"
+            f" without BIDS data: {missing}",
+            soft_wrap=True,
+        )
+    if missing := sorted(session_ids.keys() - participant_ids):
+        console.print(
+            f"[yellow]Warning:[/yellow] BIDS subjects missing from"
+            f" {PARTICIPANTS_FILENAME}: {missing}",
+            soft_wrap=True,
+        )
+
     for row in rows:
         row[COL_SESSION_ID] = session_ids.get(row[COL_PARTICIPANT_ID], "")
 
