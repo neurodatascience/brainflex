@@ -99,10 +99,10 @@ def _get_freesurfer(
     if build_stamp_key is None:
         raise ValueError(f"No FreeSurfer build stamp found for {dataset_id}")
     build_stamp = read(store, build_stamp_key).decode()
-    match = re.search(r"v(\d+\.\d+\.\d+)", build_stamp)
+    match = re.search(r"\d+\.\d+\.\d+", build_stamp)
     if match is None:
         raise ValueError(f"Could not parse FreeSurfer version from: {build_stamp}")
-    version = match.group(1)
+    version = match.group()
 
     dpath_output = layout.get_dpath_pipeline_output(FREESURFER_PIPELINE_NAME, version)
     keys_to_paths = {}

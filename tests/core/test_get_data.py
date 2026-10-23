@@ -116,6 +116,34 @@ class TestGetData:
             "status_log.tsv"
         ]
 
+    @pytest.mark.parametrize(
+        ("build_stamp", "version"),
+        [
+            (b"freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.1-f53a55a\n", "6.0.1"),
+            (b"freesurfer-linux-ubuntu22_x86_64-7.3.2-20220804-6354275\n", "7.3.2"),
+        ],
+    )
+    def test_freesurfer_version(
+        self,
+        mock_s3: dict[tuple[str, str], bytes],
+        root: Path,
+        build_stamp: bytes,
+        version: str,
+    ):
+        for bucket, key in mock_s3:
+            if key.endswith("/scripts/build-stamp.txt"):
+                mock_s3[(bucket, key)] = build_stamp
+        dpath_study = get_data(root, DATASET_ID)
+        dpath_pipeline = dpath_study / "derivatives/freesurfer"
+        assert [p.name for p in dpath_pipeline.iterdir()] == [version]
+
+    def test_bad_build_stamp(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
+        for bucket, key in mock_s3:
+            if key.endswith("/scripts/build-stamp.txt"):
+                mock_s3[(bucket, key)] = b"freesurfer-dev\n"
+        with pytest.raises(ValueError, match="Could not parse FreeSurfer version"):
+            get_data(root, DATASET_ID)
+
     def test_single_session(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
         mock_s3.clear()
         mock_s3 |= _raw_objects(["sub-01/ses-01", "sub-02/ses-02"]) | _fs_objects(
