@@ -18,6 +18,7 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
+from rich.table import Column
 
 from brainflex.utils.constants import (
     BIDS_SESSION_PREFIX,
@@ -44,13 +45,22 @@ from brainflex.utils.s3 import download, list_keys, make_store, read
 console = Console(stderr=True)
 
 
+LABEL_PLACEHOLDERS = "Writing empty raw BIDS files"
+LABEL_BIDS = "Downloading BIDS data"
+LABEL_FREESURFER = "Downloading FreeSurfer derivatives"
+LABEL_WIDTH = max(len(LABEL_PLACEHOLDERS), len(LABEL_BIDS), len(LABEL_FREESURFER))
+
+
 def _progress() -> Progress:
     """Create a file-count progress bar."""
     return Progress(
         SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
+        TextColumn(
+            "[progress.description]{task.description}",
+            table_column=Column(width=LABEL_WIDTH),
+        ),
         BarColumn(),
-        MofNCompleteColumn(),
+        MofNCompleteColumn(table_column=Column(min_width=11, justify="right")),
         TimeElapsedColumn(),
         console=console,
     )
@@ -80,14 +90,13 @@ def _stage_bids(dataset_id: str, dpath: Path, full: bool = False) -> None:
 
     dpath.mkdir(parents=True, exist_ok=True)
     with _progress() as progress:
-        task = progress.add_task(
-            "Downloading BIDS data",
-            total=len(keys_to_paths) + len(fpaths_placeholder),
-        )
-        for fpath in fpaths_placeholder:
-            fpath.parent.mkdir(parents=True, exist_ok=True)
-            fpath.touch()
-            progress.advance(task)
+        if fpaths_placeholder:
+            task = progress.add_task(LABEL_PLACEHOLDERS, total=len(fpaths_placeholder))
+            for fpath in fpaths_placeholder:
+                fpath.parent.mkdir(parents=True, exist_ok=True)
+                fpath.touch()
+                progress.advance(task)
+        task = progress.add_task(LABEL_BIDS, total=len(keys_to_paths))
         download(store, keys_to_paths, on_complete=lambda: progress.advance(task))
 
 
@@ -155,9 +164,7 @@ def _get_freesurfer(
         subject = relpath.split("/", 1)[0]
         keys_to_paths[key] = dpath_output / session_ids[subject] / relpath
     with _progress() as progress:
-        task = progress.add_task(
-            "Downloading FreeSurfer derivatives", total=len(keys_to_paths)
-        )
+        task = progress.add_task(LABEL_FREESURFER, total=len(keys_to_paths))
         download(store, keys_to_paths, on_complete=lambda: progress.advance(task))
 
 
@@ -264,6 +271,7 @@ def get_data(
                 check=True,
                 capture_output=True,
             )
+        console.print("  Initialized Nipoppy study")
 
     layout = DatasetLayout(dpath_root=dpath_study)
     session_ids = _get_session_ids(layout.dpath_bids)
