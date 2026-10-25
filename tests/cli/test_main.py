@@ -15,6 +15,19 @@ class TestMain:
         assert result.exit_code == 0
         assert result.stdout.strip() == __version__
 
+    @pytest.mark.parametrize("flag", ["-h", "--help"])
+    def test_help(self, runner: CliRunner, flag: str):
+        result = runner.invoke(app, [flag])
+        assert result.exit_code == 0
+        assert "Usage:" in result.stdout
+
+    @pytest.mark.parametrize("name", COMMAND_NAMES)
+    @pytest.mark.parametrize("flag", ["-h", "--help"])
+    def test_subcommand_help(self, runner: CliRunner, name: str, flag: str):
+        result = runner.invoke(app, [name, flag])
+        assert result.exit_code == 0
+        assert "Usage:" in result.stdout
+
 
 class TestCommandLayout:
     @pytest.mark.parametrize("name", COMMAND_NAMES)
