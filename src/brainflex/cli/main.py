@@ -10,7 +10,10 @@ from brainflex.cli.get_data import get_data_cli
 from brainflex.cli.init import init_cli
 from brainflex.cli.record import record_cli
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
 
 
 def _version_callback(value: bool) -> None:
