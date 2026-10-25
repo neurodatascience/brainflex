@@ -8,6 +8,7 @@ from brainflex import __version__
 from brainflex.cli.check import check_cli
 from brainflex.cli.get_data import get_data_cli
 from brainflex.cli.init import init_cli
+from brainflex.cli.record import record_cli
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -36,3 +37,4 @@ def main(
 app.command("check")(check_cli)
 app.command("get-data")(get_data_cli)
 app.command("init")(init_cli)
+app.command("record")(record_cli)

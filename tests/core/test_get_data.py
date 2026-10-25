@@ -128,9 +128,7 @@ class TestGetData:
         assert pheno_json == '{"age": {}}'
 
         # staging directory is cleaned up
-        assert sorted(p.name for p in (root / ".brainflex").iterdir()) == [
-            "status_log.tsv"
-        ]
+        assert list((root / ".brainflex").iterdir()) == []
 
     def test_participants_without_bids(
         self,

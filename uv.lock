@@ -159,6 +159,7 @@ source = { editable = "." }
 dependencies = [
     { name = "nipoppy" },
     { name = "obstore" },
+    { name = "pandas" },
     { name = "rich" },
     { name = "typer" },
 ]
@@ -194,6 +195,7 @@ test = [
 requires-dist = [
     { name = "nipoppy", specifier = "==0.4.7" },
     { name = "obstore", specifier = ">=0.9,<0.10" },
+    { name = "pandas" },
     { name = "rich" },
     { name = "typer", specifier = ">=0.13" },
 ]
