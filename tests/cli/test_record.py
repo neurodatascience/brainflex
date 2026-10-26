@@ -58,6 +58,26 @@ class TestRecord:
             tmp_path.resolve(), Step.GET_DATA, Status.START, notes=""
         )
 
+    @pytest.mark.parametrize("explicit", [True, False])
+    def test_subdirectory(
+        self,
+        runner: CliRunner,
+        mock_record: MagicMock,
+        tmp_path: Path,
+        dpath_subdir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        explicit: bool,
+    ):
+        monkeypatch.chdir(dpath_subdir)
+        result = runner.invoke(
+            app,
+            ["record", "get-data", "start", *([str(dpath_subdir)] if explicit else [])],
+        )
+        assert result.exit_code == 0
+        mock_record.assert_called_once_with(
+            tmp_path.resolve(), Step.GET_DATA, Status.START, notes=""
+        )
+
     @pytest.mark.parametrize(
         "args", [["bad-step", "start"], ["get-data", "bad-status"]]
     )

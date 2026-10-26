@@ -49,6 +49,29 @@ class TestGetData:
             full_freesurfer=False,
         )
 
+    @pytest.mark.parametrize("explicit", [True, False])
+    def test_subdirectory(
+        self,
+        runner: CliRunner,
+        mock_get_data: MagicMock,
+        tmp_path: Path,
+        dpath_subdir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        explicit: bool,
+    ):
+        monkeypatch.chdir(dpath_subdir)
+        result = runner.invoke(
+            app, ["get-data", "ds000001", *([str(dpath_subdir)] if explicit else [])]
+        )
+        assert result.exit_code == 0
+        mock_get_data.assert_called_once_with(
+            tmp_path.resolve(),
+            "ds000001",
+            overwrite=False,
+            full_rawbids=False,
+            full_freesurfer=False,
+        )
+
     @pytest.mark.parametrize("flag", ["--overwrite", "--force", "-f"])
     def test_overwrite(
         self, runner: CliRunner, mock_get_data: MagicMock, tmp_path: Path, flag: str

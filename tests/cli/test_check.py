@@ -34,6 +34,24 @@ class TestCheck:
         assert result.exit_code == 0
         mock_check.assert_called_once_with(tmp_path.resolve())
 
+    @pytest.mark.parametrize("explicit", [True, False])
+    def test_subdirectory(
+        self,
+        runner: CliRunner,
+        mock_check: MagicMock,
+        tmp_path: Path,
+        dpath_subdir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        explicit: bool,
+    ):
+        monkeypatch.chdir(dpath_subdir)
+        mock_check.return_value = []
+        result = runner.invoke(
+            app, ["check", *([str(dpath_subdir)] if explicit else [])]
+        )
+        assert result.exit_code == 0
+        mock_check.assert_called_once_with(tmp_path.resolve())
+
     @pytest.mark.parametrize(
         ("check_results", "return_code", "expected_messages"),
         [

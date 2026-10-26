@@ -7,6 +7,7 @@ from typing import Annotated
 import typer
 
 from brainflex.core.get_data import get_data
+from brainflex.utils.paths import find_root
 
 
 def get_data_cli(
@@ -19,7 +20,8 @@ def get_data_cli(
         typer.Argument(
             file_okay=False,
             resolve_path=True,
-            help="Project root directory.",
+            callback=find_root,
+            help="Project root directory, or any subdirectory of it.",
         ),
     ] = Path(),
     overwrite: Annotated[

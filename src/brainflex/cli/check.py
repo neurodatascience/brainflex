@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 
 from brainflex.core.check import check
+from brainflex.utils.paths import find_root
 
 
 def check_cli(
@@ -14,7 +15,8 @@ def check_cli(
         typer.Argument(
             file_okay=False,
             resolve_path=True,
-            help="Project root directory.",
+            callback=find_root,
+            help="Project root directory, or any subdirectory of it.",
         ),
     ] = Path(),
 ) -> None:

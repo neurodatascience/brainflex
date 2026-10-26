@@ -7,6 +7,7 @@ import typer
 from rich.prompt import Prompt
 
 from brainflex.core.record import Status, Step, record
+from brainflex.utils.paths import find_root
 
 
 def record_cli(
@@ -17,7 +18,8 @@ def record_cli(
         typer.Argument(
             file_okay=False,
             resolve_path=True,
-            help="Project root directory.",
+            callback=find_root,
+            help="Project root directory, or any subdirectory of it.",
         ),
     ] = Path(),
 ) -> None:
