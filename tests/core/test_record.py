@@ -80,6 +80,44 @@ class TestRecord:
         assert message in capsys.readouterr().err
         assert len(_read(fpath_log)) == len(statuses)
 
+    def test_extra_columns_kept(self, root: Path, fpath_log: Path):
+        fpath_log.write_text(
+            "timestamp\tstep\tstatus\tnotes\textra\nt0\tget-data\tstart\t\tx\n"
+        )
+        record(root, Step.GET_DATA, Status.END)
+        df = _read(fpath_log)
+        assert list(df["status"]) == ["start", "end"]
+        assert list(df["extra"]) == ["x", ""]
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "",
+            "timestamp\tstep\tstatus\nt0\tget-data\tstart\n",
+            'timestamp\tstep\tstatus\tnotes\n"unclosed\n',
+        ],
+    )
+    def test_invalid_log(
+        self,
+        root: Path,
+        fpath_log: Path,
+        capsys: pytest.CaptureFixture[str],
+        content: str,
+    ):
+        fpath_log.write_text(content)
+        record(root, Step.GET_DATA, Status.START)
+
+        fpaths_backup = list(fpath_log.parent.glob("status_log-*.tsv"))
+        assert len(fpaths_backup) == 1
+        assert fpaths_backup[0].read_text() == content
+        df = _read(fpath_log)
+        assert tuple(df.columns) == STATUS_LOG_COLUMNS
+        assert len(df) == 1
+        err = capsys.readouterr().err
+        assert "invalid status log" in err
+        # previous records are discarded, so no start/end warning
+        assert "was already started" not in err
+
     def test_not_initialized(self, tmp_path: Path):
         with pytest.raises(FileNotFoundError, match="not initialized"):
             record(tmp_path, Step.GET_DATA, Status.START)

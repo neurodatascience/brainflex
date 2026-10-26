@@ -4,6 +4,9 @@
 DATA_DIRNAME = "data"
 BRAINFLEX_DIRNAME = ".brainflex"
 STATUS_LOG_FILENAME = "status_log.tsv"
+
+# record
+BACKUP_TIMESTAMP_FORMAT = "%Y%m%dT%H%M%S"
 COL_TIMESTAMP = "timestamp"
 COL_STEP = "step"
 COL_STATUS = "status"

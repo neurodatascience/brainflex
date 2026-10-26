@@ -25,7 +25,9 @@ def record_cli(
     notes = ""
     if status == Status.END:
         notes = Prompt.ask(
-            "Notes/feedback (press Enter to leave blank)", default=notes, show_default=False
+            "Notes/feedback (press Enter to leave blank)",
+            default=notes,
+            show_default=False,
         )
     try:
         record(path, step, status, notes=notes)
