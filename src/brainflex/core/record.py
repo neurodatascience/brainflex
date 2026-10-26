@@ -47,7 +47,7 @@ def _load_status_log(fpath: Path, now: datetime) -> pd.DataFrame:
         df = pd.read_csv(fpath, sep="\t", dtype=str, keep_default_na=False)
     except (pd.errors.EmptyDataError, pd.errors.ParserError):
         df = None
-    
+
     if df is not None and set(STATUS_LOG_COLUMNS).issubset(df.columns):
         return df
 
