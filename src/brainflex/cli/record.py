@@ -6,22 +6,14 @@ from typing import Annotated
 import typer
 from rich.prompt import Prompt
 
+from brainflex.cli.options import RootOption
 from brainflex.core.record import Status, Step, record
-from brainflex.utils.paths import find_root
 
 
 def record_cli(
     step: Annotated[Step, typer.Argument(help="Experiment step.")],
     status: Annotated[Status, typer.Argument(help="Step status.")],
-    path: Annotated[
-        Path,
-        typer.Argument(
-            file_okay=False,
-            resolve_path=True,
-            callback=find_root,
-            help="Project root directory, or any subdirectory of it.",
-        ),
-    ] = Path(),
+    path: RootOption = Path(),
 ) -> None:
     """Record the start or end of an experiment step."""
     notes = ""

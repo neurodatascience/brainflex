@@ -6,8 +6,8 @@ from typing import Annotated
 
 import typer
 
+from brainflex.cli.options import RootOption
 from brainflex.core.get_data import get_data
-from brainflex.utils.paths import find_root
 
 
 def get_data_cli(
@@ -15,15 +15,7 @@ def get_data_cli(
         str,
         typer.Argument(help="OpenNeuro dataset ID, of the form ds######."),
     ],
-    path: Annotated[
-        Path,
-        typer.Argument(
-            file_okay=False,
-            resolve_path=True,
-            callback=find_root,
-            help="Project root directory, or any subdirectory of it.",
-        ),
-    ] = Path(),
+    path: RootOption = Path(),
     overwrite: Annotated[
         bool,
         typer.Option(
