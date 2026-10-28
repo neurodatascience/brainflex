@@ -41,7 +41,7 @@ test = [
     "pytest-cov",
     "pytest-mock",
     "pytest>=6.0.0",
-    "setuptools<81",
+    "setuptools<85",
 ]
 
 [project.scripts]
