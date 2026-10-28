@@ -15,8 +15,10 @@ The time required to do each step will be recorded and included in the manuscrip
 hidden:
 includehidden:
 titlesonly:
-caption: Getting started
+caption: Instructions
 ---
-prerequisites
-instructions
+initial_setup
+freesurfer_idps
+phenotypic_files
+fedbiomed_dataset
 ```

@@ -56,7 +56,7 @@ html_theme_options = {
 
 # -- MyST configuration -------------------------------------------------------
 
-myst_enable_extensions = ["fieldlist", "substitution", "colon_fence", "alert"]
+myst_enable_extensions = ["fieldlist", "substitution", "colon_fence"]
 
 myst_heading_anchors = 5
 

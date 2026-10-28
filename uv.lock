@@ -203,7 +203,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "furo" },
-    { name = "myst-parser", specifier = ">=5.1.0" },
+    { name = "myst-parser" },
     { name = "prek" },
     { name = "pytest", specifier = ">=6.0.0" },
     { name = "pytest-cov" },
@@ -213,7 +213,7 @@ dev = [
 ]
 doc = [
     { name = "furo" },
-    { name = "myst-parser", specifier = ">=5.1.0" },
+    { name = "myst-parser" },
     { name = "sphinx" },
     { name = "sphinx-copybutton" },
 ]

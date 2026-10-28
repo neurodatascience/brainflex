@@ -31,7 +31,7 @@ dynamic = ["version"]
 dev = [{ include-group = "doc" }, { include-group = "test" }, "prek"]
 doc = [
     "furo",
-    "myst-parser>=5.1.0", # for the "alert" extension
+    "myst-parser",
     "sphinx",
     "sphinx-copybutton",
 ]
