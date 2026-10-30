@@ -15,31 +15,31 @@ def mock_check(mocker: MockerFixture) -> MagicMock:
 
 
 class TestCheck:
-    def test_path(self, runner: CliRunner, mock_check: MagicMock, tmp_path: Path):
+    def test_path(self, runner: CliRunner, mock_check: MagicMock, dpath_root: Path):
         mock_check.return_value = []
-        result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+        result = runner.invoke(app, ["check", "--project", str(dpath_root)])
         assert result.exit_code == 0
-        mock_check.assert_called_once_with(tmp_path.resolve())
+        mock_check.assert_called_once_with(dpath_root.resolve())
 
     def test_default_path(
         self,
         runner: CliRunner,
         mock_check: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.chdir(dpath_root)
         mock_check.return_value = []
         result = runner.invoke(app, ["check"])
         assert result.exit_code == 0
-        mock_check.assert_called_once_with(tmp_path.resolve())
+        mock_check.assert_called_once_with(dpath_root.resolve())
 
     @pytest.mark.parametrize("explicit", [True, False])
     def test_subdirectory(
         self,
         runner: CliRunner,
         mock_check: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         dpath_subdir: Path,
         monkeypatch: pytest.MonkeyPatch,
         explicit: bool,
@@ -47,10 +47,10 @@ class TestCheck:
         monkeypatch.chdir(dpath_subdir)
         mock_check.return_value = []
         result = runner.invoke(
-            app, ["check", *(["--path", str(dpath_subdir)] if explicit else [])]
+            app, ["check", *(["--project", str(dpath_subdir)] if explicit else [])]
         )
         assert result.exit_code == 0
-        mock_check.assert_called_once_with(tmp_path.resolve())
+        mock_check.assert_called_once_with(dpath_root.resolve())
 
     @pytest.mark.parametrize(
         ("check_results", "return_code", "expected_messages"),
@@ -84,9 +84,10 @@ class TestCheck:
         expected_messages,
         runner: CliRunner,
         mock_check: MagicMock,
+        dpath_root: Path,
     ):
         mock_check.return_value = check_results
-        result = runner.invoke(app, ["check"])
+        result = runner.invoke(app, ["check", "--project", str(dpath_root)])
         assert result.exit_code == return_code
         for message in expected_messages:
             assert message in result.stdout

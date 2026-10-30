@@ -15,15 +15,15 @@ def mock_record(mocker: MockerFixture) -> MagicMock:
 
 
 class TestRecord:
-    def test_start(self, runner: CliRunner, mock_record: MagicMock, tmp_path: Path):
+    def test_start(self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path):
         result = runner.invoke(
-            app, ["record", "get-data", "start", "--path", str(tmp_path)]
+            app, ["record", "get-data", "start", "--project", str(dpath_root)]
         )
         assert result.exit_code == 0
         assert "Notes" not in result.stdout
         assert "Recorded get-data start" in result.stdout
         mock_record.assert_called_once_with(
-            tmp_path.resolve(), Step.GET_DATA, Status.START, notes=""
+            dpath_root.resolve(), Step.GET_DATA, Status.START, notes=""
         )
 
     @pytest.mark.parametrize(
@@ -33,33 +33,33 @@ class TestRecord:
         self,
         runner: CliRunner,
         mock_record: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         user_input: str,
         notes: str,
     ):
         result = runner.invoke(
             app,
-            ["record", "get-data", "end", "--path", str(tmp_path)],
+            ["record", "get-data", "end", "--project", str(dpath_root)],
             input=user_input,
         )
         assert result.exit_code == 0
         assert "Notes" in result.stdout
         mock_record.assert_called_once_with(
-            tmp_path.resolve(), Step.GET_DATA, Status.END, notes=notes
+            dpath_root.resolve(), Step.GET_DATA, Status.END, notes=notes
         )
 
     def test_default_path(
         self,
         runner: CliRunner,
         mock_record: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.chdir(dpath_root)
         result = runner.invoke(app, ["record", "get-data", "start"])
         assert result.exit_code == 0
         mock_record.assert_called_once_with(
-            tmp_path.resolve(), Step.GET_DATA, Status.START, notes=""
+            dpath_root.resolve(), Step.GET_DATA, Status.START, notes=""
         )
 
     @pytest.mark.parametrize("explicit", [True, False])
@@ -67,7 +67,7 @@ class TestRecord:
         self,
         runner: CliRunner,
         mock_record: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         dpath_subdir: Path,
         monkeypatch: pytest.MonkeyPatch,
         explicit: bool,
@@ -79,12 +79,12 @@ class TestRecord:
                 "record",
                 "get-data",
                 "start",
-                *(["--path", str(dpath_subdir)] if explicit else []),
+                *(["--project", str(dpath_subdir)] if explicit else []),
             ],
         )
         assert result.exit_code == 0
         mock_record.assert_called_once_with(
-            tmp_path.resolve(), Step.GET_DATA, Status.START, notes=""
+            dpath_root.resolve(), Step.GET_DATA, Status.START, notes=""
         )
 
     @pytest.mark.parametrize(
@@ -98,11 +98,11 @@ class TestRecord:
         mock_record.assert_not_called()
 
     def test_not_initialized(
-        self, runner: CliRunner, mock_record: MagicMock, tmp_path: Path
+        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path
     ):
         mock_record.side_effect = FileNotFoundError("Project not initialized")
         result = runner.invoke(
-            app, ["record", "get-data", "start", "--path", str(tmp_path)]
+            app, ["record", "get-data", "start", "--project", str(dpath_root)]
         )
         assert result.exit_code == 1
         assert "not initialized" in result.stderr
