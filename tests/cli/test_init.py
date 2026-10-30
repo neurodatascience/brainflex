@@ -23,31 +23,31 @@ class TestInit:
         self,
         runner: CliRunner,
         mock_init: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         fpath_vpn_config: Path,
     ):
         result = runner.invoke(
-            app, ["init", str(fpath_vpn_config), "--path", str(tmp_path)]
+            app, ["init", str(fpath_vpn_config), "--project", str(dpath_root)]
         )
         assert result.exit_code == 0
         assert "Created" in result.stdout
         mock_init.assert_called_once_with(
-            tmp_path.resolve(), fpath_vpn_config.resolve()
+            dpath_root.resolve(), fpath_vpn_config.resolve()
         )
 
     def test_init_default_path(
         self,
         runner: CliRunner,
         mock_init: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         fpath_vpn_config: Path,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.chdir(dpath_root)
         result = runner.invoke(app, ["init", str(fpath_vpn_config)])
         assert result.exit_code == 0
         mock_init.assert_called_once_with(
-            tmp_path.resolve(), fpath_vpn_config.resolve()
+            dpath_root.resolve(), fpath_vpn_config.resolve()
         )
 
     @pytest.mark.parametrize("explicit", [True, False])
@@ -55,7 +55,7 @@ class TestInit:
         self,
         runner: CliRunner,
         mock_init: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         dpath_subdir: Path,
         fpath_vpn_config: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -67,19 +67,19 @@ class TestInit:
             [
                 "init",
                 str(fpath_vpn_config),
-                *(["--path", str(dpath_subdir)] if explicit else []),
+                *(["--project", str(dpath_subdir)] if explicit else []),
             ],
         )
         assert result.exit_code == 0
         mock_init.assert_called_once_with(
-            tmp_path.resolve(), fpath_vpn_config.resolve()
+            dpath_root.resolve(), fpath_vpn_config.resolve()
         )
 
     def test_init_relative_vpn_config(
         self,
         runner: CliRunner,
         mock_init: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         dpath_subdir: Path,
         monkeypatch: pytest.MonkeyPatch,
     ):
@@ -88,7 +88,7 @@ class TestInit:
         result = runner.invoke(app, ["init", "config.env"])
         assert result.exit_code == 0
         mock_init.assert_called_once_with(
-            tmp_path.resolve(), (dpath_subdir / "config.env").resolve()
+            dpath_root.resolve(), (dpath_subdir / "config.env").resolve()
         )
 
     def test_init_missing_vpn_config_argument(
@@ -109,13 +109,13 @@ class TestInit:
         self,
         runner: CliRunner,
         mock_init: MagicMock,
-        tmp_path: Path,
+        dpath_root: Path,
         fpath_vpn_config: Path,
         error: Exception,
     ):
         mock_init.side_effect = error
         result = runner.invoke(
-            app, ["init", str(fpath_vpn_config), "--path", str(tmp_path)]
+            app, ["init", str(fpath_vpn_config), "--project", str(dpath_root)]
         )
         assert result.exit_code == 1
         assert str(error) in result.stderr

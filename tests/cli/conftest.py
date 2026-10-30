@@ -12,9 +12,15 @@ def runner() -> CliRunner:
 
 
 @pytest.fixture
-def dpath_subdir(tmp_path: Path) -> Path:
-    """Subdirectory of a project initialized in ``tmp_path``."""
+def dpath_root(tmp_path: Path) -> Path:
+    """Root of a project initialized in ``tmp_path``."""
     (tmp_path / BRAINFLEX_DIRNAME).mkdir()
-    dpath = tmp_path / NIPOPPY_STUDY_DIRNAME
+    return tmp_path
+
+
+@pytest.fixture
+def dpath_subdir(dpath_root: Path) -> Path:
+    """Subdirectory of a project initialized in ``dpath_root``."""
+    dpath = dpath_root / NIPOPPY_STUDY_DIRNAME
     dpath.mkdir(parents=True)
     return dpath
