@@ -3,6 +3,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from nipoppy.config.main import Config
+from nipoppy.env import ContainerCommandEnum
+from nipoppy.utils.utils import FPATH_SAMPLE_CONFIG
 from pytest_mock import MockerFixture
 
 from brainflex.core.get_data import get_data
@@ -129,6 +132,28 @@ class TestGetData:
 
         # staging directory is cleaned up
         assert list((root / ".brainflex").iterdir()) == []
+
+        # containers run with Docker
+        config = Config.load(dpath_study / "global_config.json")
+        assert config.CONTAINER_CONFIG.COMMAND == ContainerCommandEnum.DOCKER
+        assert config.CONTAINER_CONFIG.ARGS == []
+
+    def test_ignores_user_config(
+        self,
+        mock_s3: dict[tuple[str, str], bytes],
+        root: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        dpath_home = tmp_path / "home"
+        monkeypatch.setenv("HOME", str(dpath_home))
+        user_config = Config.load(FPATH_SAMPLE_CONFIG, apply_substitutions=False)
+        user_config.CUSTOM = {"from_user_config": True}
+        user_config.save(dpath_home / ".nipoppy" / "config.json")
+
+        dpath_study = get_data(root, DATASET_ID)
+        config = Config.load(dpath_study / "global_config.json")
+        assert config.CUSTOM == {}
 
     def test_participants_without_bids(
         self,
