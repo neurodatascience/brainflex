@@ -117,7 +117,7 @@ class TestGetData:
         mock_get_data.side_effect = FileExistsError("Dataset already exists")
         result = runner.invoke(app, ["get-data", "ds000001", "--path", str(tmp_path)])
         assert result.exit_code == 1
-        assert "already exists" in result.stderr
+        assert "ERROR: Dataset already exists" in result.stderr
         assert "--overwrite" in result.stderr
 
     @pytest.mark.parametrize(
@@ -138,4 +138,5 @@ class TestGetData:
         mock_get_data.side_effect = error
         result = runner.invoke(app, ["get-data", "ds000001", "--path", str(tmp_path)])
         assert result.exit_code == 1
+        assert "ERROR: " in result.stderr
         assert message in result.stderr

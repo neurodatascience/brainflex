@@ -92,6 +92,8 @@ def root(tmp_path: Path) -> Path:
     return tmp_path
 
 
+# the mock dataset has a participant without BIDS data
+@pytest.mark.filterwarnings("ignore:participants in participants.tsv without BIDS data")
 class TestGetData:
     def test_get_data(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
         dpath_study = get_data(root, DATASET_ID)
@@ -134,24 +136,23 @@ class TestGetData:
         self,
         mock_s3: dict[tuple[str, str], bytes],
         root: Path,
-        capsys: pytest.CaptureFixture[str],
     ):
-        get_data(root, DATASET_ID)
-        assert "without BIDS data: ['sub-03']" in capsys.readouterr().err
+        with pytest.warns(UserWarning, match=r"without BIDS data: \['sub-03'\]"):
+            get_data(root, DATASET_ID)
 
     def test_bids_without_participants(
         self,
         mock_s3: dict[tuple[str, str], bytes],
         root: Path,
-        capsys: pytest.CaptureFixture[str],
     ):
         mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
             b"participant_id\tage\nsub-01\t20\n"
         )
-        get_data(root, DATASET_ID)
-        err = capsys.readouterr().err
-        assert "missing from participants.tsv: ['sub-02']" in err
-        assert "without BIDS data" not in err
+        with pytest.warns(UserWarning) as record_warnings:
+            get_data(root, DATASET_ID)
+        assert [str(w.message) for w in record_warnings] == [
+            "BIDS subjects missing from participants.tsv: ['sub-02']"
+        ]
 
     def test_no_matching_participants(
         self, mock_s3: dict[tuple[str, str], bytes], root: Path

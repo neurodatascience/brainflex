@@ -5,6 +5,7 @@ from typing import Annotated
 
 import typer
 
+from brainflex.cli.console import print_error
 from brainflex.cli.options import RootOption
 from brainflex.core.init import init
 from brainflex.utils.constants import (
@@ -29,7 +30,7 @@ def init_cli(
     try:
         init(path, vpn_config)
     except (FileExistsError, FileNotFoundError) as e:
-        typer.echo(e, err=True)
+        print_error(e)
         raise typer.Exit(1) from e
     typer.echo(f"Created {path / ENV_FILENAME}")
     typer.echo(f"Created {path / VPN_CONFIG_DIRNAME / VPN_CONFIG_FILENAME}")

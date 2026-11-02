@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -105,5 +106,15 @@ class TestRecord:
             app, ["record", "get-data", "start", "--path", str(tmp_path)]
         )
         assert result.exit_code == 1
-        assert "not initialized" in result.stderr
+        assert "ERROR: Project not initialized" in result.stderr
         assert "brainflex init" in result.stderr
+
+    def test_warning(self, runner: CliRunner, mock_record: MagicMock, tmp_path: Path):
+        mock_record.side_effect = lambda *args, **kwargs: warnings.warn(
+            "step get-data was already started", stacklevel=2
+        )
+        result = runner.invoke(
+            app, ["record", "get-data", "start", "--path", str(tmp_path)]
+        )
+        assert result.exit_code == 0
+        assert "WARNING: step get-data was already started" in result.stderr

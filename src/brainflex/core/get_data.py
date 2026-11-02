@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import warnings
 from pathlib import Path
 
 from nipoppy.env import FAKE_SESSION_ID
@@ -196,16 +197,14 @@ def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
             f"No participant IDs in {PARTICIPANTS_FILENAME} match the BIDS subjects"
         )
     if missing := sorted(participant_ids - session_ids.keys()):
-        console.print(
-            f"[yellow]Warning:[/yellow] participants in {PARTICIPANTS_FILENAME}"
-            f" without BIDS data: {missing}",
-            soft_wrap=True,
+        warnings.warn(
+            f"participants in {PARTICIPANTS_FILENAME} without BIDS data: {missing}",
+            stacklevel=3,
         )
     if missing := sorted(session_ids.keys() - participant_ids):
-        console.print(
-            f"[yellow]Warning:[/yellow] BIDS subjects missing from"
-            f" {PARTICIPANTS_FILENAME}: {missing}",
-            soft_wrap=True,
+        warnings.warn(
+            f"BIDS subjects missing from {PARTICIPANTS_FILENAME}: {missing}",
+            stacklevel=3,
         )
 
     for row in rows:

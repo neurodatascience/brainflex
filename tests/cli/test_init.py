@@ -118,4 +118,4 @@ class TestInit:
             app, ["init", str(fpath_vpn_config), "--path", str(tmp_path)]
         )
         assert result.exit_code == 1
-        assert str(error) in result.stderr
+        assert f"ERROR: {error}" in result.stderr
