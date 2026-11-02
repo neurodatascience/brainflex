@@ -1,11 +1,11 @@
 """Record the start and end of experiment steps."""
 
+import warnings
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
 import pandas as pd
-from rich.console import Console
 
 from brainflex.utils.constants import (
     BACKUP_TIMESTAMP_FORMAT,
@@ -17,8 +17,6 @@ from brainflex.utils.constants import (
     STATUS_LOG_COLUMNS,
     STATUS_LOG_FILENAME,
 )
-
-console = Console(stderr=True)
 
 
 class Step(StrEnum):
@@ -55,10 +53,7 @@ def _load_status_log(fpath: Path, now: datetime) -> pd.DataFrame:
         f"{fpath.stem}-{now.strftime(BACKUP_TIMESTAMP_FORMAT)}{fpath.suffix}"
     )
     fpath.rename(fpath_backup)
-    console.print(
-        f"[yellow]Warning:[/yellow] invalid status log moved to {fpath_backup}",
-        soft_wrap=True,
-    )
+    warnings.warn(f"invalid status log moved to {fpath_backup}", stacklevel=3)
     return pd.DataFrame(columns=STATUS_LOG_COLUMNS)
 
 
@@ -66,25 +61,16 @@ def record(root: Path, step: Step, status: Status, notes: str = "") -> None:
     """Add a timestamped row to the status log, creating it if needed.
 
     Warns if a step is started twice or ended without being started.
-    Raises FileNotFoundError if the project is not initialized.
     """
-    dpath_brainflex = root / BRAINFLEX_DIRNAME
-    if not dpath_brainflex.is_dir():
-        raise FileNotFoundError(f"Project not initialized: {dpath_brainflex} not found")
-
     now = datetime.now().astimezone()
-    df = _load_status_log(fpath := dpath_brainflex / STATUS_LOG_FILENAME, now)
+    df = _load_status_log(fpath := root / BRAINFLEX_DIRNAME / STATUS_LOG_FILENAME, now)
 
     statuses = df.query(f"{COL_STEP} == @step")[COL_STATUS]
     last_status = statuses.iloc[-1] if not statuses.empty else None
     if status == Status.START and last_status == Status.START:
-        console.print(
-            f"[yellow]Warning:[/yellow] step {step} was already started", soft_wrap=True
-        )
+        warnings.warn(f"step {step} was already started", stacklevel=2)
     elif status == Status.END and last_status != Status.START:
-        console.print(
-            f"[yellow]Warning:[/yellow] step {step} was not started", soft_wrap=True
-        )
+        warnings.warn(f"step {step} was not started", stacklevel=2)
 
     row = {
         COL_TIMESTAMP: now.isoformat(timespec="seconds"),

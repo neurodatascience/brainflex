@@ -5,6 +5,7 @@ from typing import Annotated
 import typer
 
 from brainflex import __version__
+from brainflex.cli.console import render_warnings
 from brainflex.cli.get_data import get_data_cli
 from brainflex.cli.init import init_cli
 from brainflex.cli.record import record_cli
@@ -23,6 +24,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     version: Annotated[
         bool | None,
         typer.Option(
@@ -34,6 +36,7 @@ def main(
     ] = None,
 ) -> None:
     """Brain federated learning experiment."""
+    ctx.with_resource(render_warnings())
 
 
 app.command("get-data")(get_data_cli)

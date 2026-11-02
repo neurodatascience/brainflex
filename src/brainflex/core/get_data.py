@@ -5,9 +5,11 @@ import re
 import shutil
 import subprocess
 import tempfile
+import warnings
 from pathlib import Path
 
-from nipoppy.env import FAKE_SESSION_ID
+from nipoppy.config.main import Config
+from nipoppy.env import FAKE_SESSION_ID, ContainerCommandEnum
 from nipoppy.layout import DatasetLayout
 from rich.console import Console
 from rich.progress import (
@@ -98,6 +100,14 @@ def _stage_bids(dataset_id: str, dpath: Path, full: bool = False) -> None:
                 progress.advance(task)
         task = progress.add_task(LABEL_BIDS, total=len(keys_to_paths))
         download(store, keys_to_paths, on_complete=lambda: progress.advance(task))
+
+
+def _set_container_config(layout: DatasetLayout) -> None:
+    """Configure the Nipoppy study to run containers with Docker."""
+    config = Config.load(layout.fpath_config, apply_substitutions=False)
+    config.CONTAINER_CONFIG.COMMAND = ContainerCommandEnum.DOCKER
+    config.CONTAINER_CONFIG.ARGS = []
+    config.save(layout.fpath_config)
 
 
 def _get_session_ids(dpath_bids: Path) -> dict[str, str]:
@@ -196,16 +206,14 @@ def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
             f"No participant IDs in {PARTICIPANTS_FILENAME} match the BIDS subjects"
         )
     if missing := sorted(participant_ids - session_ids.keys()):
-        console.print(
-            f"[yellow]Warning:[/yellow] participants in {PARTICIPANTS_FILENAME}"
-            f" without BIDS data: {missing}",
-            soft_wrap=True,
+        warnings.warn(
+            f"participants in {PARTICIPANTS_FILENAME} without BIDS data: {missing}",
+            stacklevel=3,
         )
     if missing := sorted(session_ids.keys() - participant_ids):
-        console.print(
-            f"[yellow]Warning:[/yellow] BIDS subjects missing from"
-            f" {PARTICIPANTS_FILENAME}: {missing}",
-            soft_wrap=True,
+        warnings.warn(
+            f"BIDS subjects missing from {PARTICIPANTS_FILENAME}: {missing}",
+            stacklevel=3,
         )
 
     for row in rows:
@@ -242,6 +250,8 @@ def get_data(
     ``full_rawbids`` is True, and FreeSurfer outputs contain stats/ and scripts/
     only unless ``full_freesurfer`` is True.
 
+    The Nipoppy study is configured to run containers with Docker.
+
     Raises FileExistsError if the study already exists and ``overwrite`` is False.
     Returns the path to the Nipoppy study.
     """
@@ -267,6 +277,7 @@ def get_data(
                     str(dpath_staging),
                     "--mode",
                     "move",
+                    "--default-config",
                 ],
                 check=True,
                 capture_output=True,
@@ -274,6 +285,8 @@ def get_data(
         console.print("  Initialized Nipoppy study")
 
     layout = DatasetLayout(dpath_root=dpath_study)
+    _set_container_config(layout)
+    console.print("  Configured Nipoppy to use Docker")
     session_ids = _get_session_ids(layout.dpath_bids)
     _get_freesurfer(dataset_id, layout, session_ids, full=full_freesurfer)
     _write_pheno(layout, session_ids)

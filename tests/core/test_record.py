@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -53,10 +54,11 @@ class TestRecord:
         record(root, Step.GET_DATA, Status.END, notes=notes)
         assert _read(fpath_log).iloc[-1]["notes"] == notes
 
-    def test_no_warning(self, root: Path, capsys: pytest.CaptureFixture[str]):
-        record(root, Step.GET_DATA, Status.START)
-        record(root, Step.GET_DATA, Status.END)
-        assert "Warning" not in capsys.readouterr().err
+    def test_no_warning(self, root: Path):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            record(root, Step.GET_DATA, Status.START)
+            record(root, Step.GET_DATA, Status.END)
 
     @pytest.mark.parametrize(
         ("statuses", "message"),
@@ -70,13 +72,13 @@ class TestRecord:
         self,
         root: Path,
         fpath_log: Path,
-        capsys: pytest.CaptureFixture[str],
         statuses: list[Status],
         message: str,
     ):
-        for status in statuses:
+        for status in statuses[:-1]:
             record(root, Step.GET_DATA, status)
-        assert message in capsys.readouterr().err
+        with pytest.warns(UserWarning, match=message):
+            record(root, Step.GET_DATA, statuses[-1])
         assert len(_read(fpath_log)) == len(statuses)
 
     def test_extra_columns_kept(self, root: Path, fpath_log: Path):
@@ -100,11 +102,11 @@ class TestRecord:
         self,
         root: Path,
         fpath_log: Path,
-        capsys: pytest.CaptureFixture[str],
         content: str,
     ):
         fpath_log.write_text(content)
-        record(root, Step.GET_DATA, Status.START)
+        with pytest.warns(UserWarning, match="invalid status log") as record_warnings:
+            record(root, Step.GET_DATA, Status.START)
 
         fpaths_backup = list(fpath_log.parent.glob("status_log-*.tsv"))
         assert len(fpaths_backup) == 1
@@ -112,11 +114,5 @@ class TestRecord:
         df = _read(fpath_log)
         assert tuple(df.columns) == STATUS_LOG_COLUMNS
         assert len(df) == 1
-        err = capsys.readouterr().err
-        assert "invalid status log" in err
         # previous records are discarded, so no start/end warning
-        assert "was already started" not in err
-
-    def test_not_initialized(self, tmp_path: Path):
-        with pytest.raises(FileNotFoundError, match="not initialized"):
-            record(tmp_path, Step.GET_DATA, Status.START)
+        assert len(record_warnings) == 1

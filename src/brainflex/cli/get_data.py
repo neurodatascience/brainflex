@@ -6,6 +6,7 @@ from typing import Annotated
 
 import typer
 
+from brainflex.cli.console import print_error
 from brainflex.cli.options import RootOption
 from brainflex.core.get_data import get_data
 
@@ -50,9 +51,9 @@ def get_data_cli(
             full_freesurfer=full_freesurfer,
         )
     except FileExistsError as e:
-        typer.echo(f"{e}. Use --overwrite to replace it.", err=True)
+        print_error(f"{e}. Use --overwrite to replace it.")
         raise typer.Exit(1) from e
     except (ValueError, subprocess.CalledProcessError) as e:
-        typer.echo(e, err=True)
+        print_error(e)
         raise typer.Exit(1) from e
     typer.echo(f"Downloaded {dataset_id} to {dpath_study}")

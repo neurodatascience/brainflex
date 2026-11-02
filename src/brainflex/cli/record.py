@@ -23,9 +23,5 @@ def record_cli(
             default=notes,
             show_default=False,
         )
-    try:
-        record(path, step, status, notes=notes)
-    except FileNotFoundError as e:
-        typer.echo(f"{e}. Run brainflex init.", err=True)
-        raise typer.Exit(1) from e
+    record(path, step, status, notes=notes)
     typer.echo(f"Recorded {step} {status}")
