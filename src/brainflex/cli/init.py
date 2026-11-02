@@ -29,7 +29,7 @@ def init_cli(
     """Create the Docker Compose configuration (.env and VPN configuration files)."""
     try:
         init(path, vpn_config)
-    except (FileExistsError, FileNotFoundError) as e:
+    except (FileExistsError, FileNotFoundError, ValueError) as e:
         print_error(e)
         raise typer.Exit(1) from e
     typer.echo(f"Created {path / ENV_FILENAME}")

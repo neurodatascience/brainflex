@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from brainflex.core.init import _set_variable, init
+from brainflex.core.init import _get_variable, _set_variable, init
 from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
     ENV_EXAMPLE_FILENAME,
@@ -13,7 +13,7 @@ from brainflex.utils.constants import (
     VPN_CONFIG_FILENAME,
 )
 
-VPN_CONFIG = "export VPN_IP=10.221.0.2\n"
+VPN_CONFIG = "export FEDBIOMED_NODEID=site-a\nexport VPN_IP=10.221.0.2\n"
 
 
 @pytest.fixture
@@ -61,6 +61,26 @@ class TestSetVariable:
         assert _set_variable(content, "VAR", "1") == expected
 
 
+class TestGetVariable:
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            ("export VAR=1\n", "1"),
+            ("VAR=1\n", "1"),
+            ("  export VAR=1  \n", "1"),
+            ("export VAR='1'\n", "1"),
+            ('export VAR="1"\n', "1"),
+            ("A=a\nexport VAR=1\nB=b", "1"),
+            ("export VAR=\n", None),
+            ("#export VAR=1\n", None),
+            ("export OTHER_VAR=1\n", None),
+            ("", None),
+        ],
+    )
+    def test_get_variable(self, content: str, expected: str | None):
+        assert _get_variable(content, "VAR") == expected
+
+
 class TestInit:
     def test_init(self, root: Path, fpath_vpn_config: Path, env_example: str):
         init(root, fpath_vpn_config)
@@ -70,7 +90,7 @@ class TestInit:
             "#CONTAINER_UID=", f"CONTAINER_UID={os.getuid()}"
         ).replace("#CONTAINER_GID=", f"CONTAINER_GID={os.getgid()}").replace(
             "#NIPOPPY_ROOT=", "NIPOPPY_ROOT=./nipoppy_study"
-        )
+        ).replace("#FBM_NODE_NAME=", "FBM_NODE_NAME=site-a")
         assert content != env_example
 
         fpath_dst = _fpath_vpn_config_dst(root)
@@ -90,6 +110,16 @@ class TestInit:
     def test_init_no_vpn_config(self, root: Path, tmp_path_factory):
         fpath = tmp_path_factory.mktemp("download") / VPN_CONFIG_FILENAME
         with pytest.raises(FileNotFoundError, match="VPN configuration file"):
+            init(root, fpath)
+        assert not (root / ENV_FILENAME).exists()
+        assert not _fpath_vpn_config_dst(root).exists()
+
+    def test_init_no_node_id(
+        self, root: Path, tmp_path_factory: pytest.TempPathFactory
+    ):
+        fpath = tmp_path_factory.mktemp("download") / VPN_CONFIG_FILENAME
+        fpath.write_text("export VPN_IP=10.221.0.2\n")
+        with pytest.raises(ValueError, match="FEDBIOMED_NODEID not set"):
             init(root, fpath)
         assert not (root / ENV_FILENAME).exists()
         assert not _fpath_vpn_config_dst(root).exists()
