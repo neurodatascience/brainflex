@@ -26,7 +26,7 @@ RUN apt-get install -y wireguard-tools
 FROM debian:bookworm-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends iproute2 iputils-ping bash vim net-tools procps kmod && \
+    apt-get install -y --no-install-recommends iproute2 iputils-ping bash vim net-tools procps && \
     rm -rf /var/lib/apt/lists/*
 
 # get wireguard from builder image

@@ -36,14 +36,6 @@ init_misc_environ() {
 
     #catch all errors in pipes
     set -o pipefail
-
-    # do we prefer to use wireguard kernel vs userspace version
-    [ -z "$USE_WG_KERNEL_MOD" ] && USE_WG_KERNEL_MOD=false
-    echo "info: set USE_WG_KERNEL_MOD='${USE_WG_KERNEL_MOD}'"
-
-    # which version of wireguard is running
-    RUNNING_KERNELWG=false
-    RUNNING_BORINGTUN=false
 }
 
 # check wireguard interface exists
@@ -57,34 +49,16 @@ check_wg_interface() {
 }
 
 # launch wireguard VPN
+# - uses boringtun (userspace) so that the container does not need to load or
+#   remove kernel modules on the host
 start_wireguard(){
 
-    # launch wireguard kernel module or userspace (boringtun)
-    if "$USE_WG_KERNEL_MOD"
+    if ! WG_SUDO=1 boringtun wg0
     then
-        ip link add dev wg0 type wireguard
-        [ "$?" -eq 0 ] && RUNNING_KERNELWG=true
-    fi
-
-    # use boringtun if explicitly requested or if kernel wg could not launch properly
-    if ! "$RUNNING_KERNELWG"
-    then
-        # need to remove kernel module if loaded for using boringtun alternative
-        [ -n "$(lsmod | grep wireguard)" ] && rmmod wireguard
-        WG_SUDO=1 boringtun wg0 && RUNNING_BORINGTUN=true
-    fi
-
-    # need wireguard to continue
-    if "$RUNNING_KERNELWG"
-    then
-        echo "info: started wireguard, using kernel module"
-    elif "$RUNNING_BORINGTUN"
-    then
-        echo "info: started wireguard, using boringtun"
-    else
         echo "CRITICAL: could not start wireguard"
         exit 1
     fi
+    echo "info: started wireguard, using boringtun"
 }
 
 # stop wireguard vpn
@@ -94,24 +68,10 @@ stop_wireguard() {
     check_wg_interface
 
     echo "info: stopping wireguard"
-    if "$RUNNING_BORINGTUN"
+    if ! pkill boringtun
     then
-        pkill boringtun
-        if [ "$?" -ne 0 ]
-        then
-            echo "CRITICAL: could not stop wireguard boringtun"
-            exit 1
-        fi
-    fi
-    if "$RUNNING_KERNELWG"
-    then
-        ip link delete dev wg0
-        rmmod wireguard
-        if [ "$?" -ne 0 ]
-        then
-            echo "CRITICAL: could not stop wireguard kernel module"
-            exit 1
-        fi
+        echo "CRITICAL: could not stop wireguard boringtun"
+        exit 1
     fi
 }
 
