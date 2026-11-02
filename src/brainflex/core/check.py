@@ -3,14 +3,9 @@
 import platform
 import subprocess
 import urllib.request
-from pathlib import Path
 from typing import NamedTuple
 
-from brainflex.utils.constants import (
-    BRAINFLEX_DIRNAME,
-    CHECK_TIMEOUT,
-    INTERNET_CHECK_URL,
-)
+from brainflex.utils.constants import CHECK_TIMEOUT, INTERNET_CHECK_URL
 
 
 class CheckResult(NamedTuple):
@@ -83,19 +78,9 @@ def _check_internet() -> CheckResult:
     )
 
 
-def _check_project(root: Path) -> CheckResult:
-    brainflex_dir_path = root / BRAINFLEX_DIRNAME
-    if not brainflex_dir_path.is_dir():
-        return CheckResult(
-            "Project", False, f"project not initialized: {brainflex_dir_path} not found"
-        )
-    return CheckResult("Project", True, f"project initialized in {root}")
-
-
-def check(root: Path) -> list[CheckResult]:
-    """Run all prerequisite checks for the project at ``root``."""
+def check() -> list[CheckResult]:
+    """Run all prerequisite checks."""
     return [
-        _check_project(root),
         _check_os(),
         _check_docker(),
         _check_docker_daemon(),

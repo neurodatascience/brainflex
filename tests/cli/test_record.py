@@ -98,23 +98,12 @@ class TestRecord:
         assert result.exit_code == 2
         mock_record.assert_not_called()
 
-    def test_not_initialized(
-        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path
-    ):
-        mock_record.side_effect = FileNotFoundError("Project not initialized")
-        result = runner.invoke(
-            app, ["record", "get-data", "start", "--project", str(dpath_root)]
-        )
-        assert result.exit_code == 1
-        assert "ERROR: Project not initialized" in result.stderr
-        assert "brainflex init" in result.stderr
-
-    def test_warning(self, runner: CliRunner, mock_record: MagicMock, tmp_path: Path):
+    def test_warning(self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path):
         mock_record.side_effect = lambda *args, **kwargs: warnings.warn(
             "step get-data was already started", stacklevel=2
         )
         result = runner.invoke(
-            app, ["record", "get-data", "start", "--path", str(tmp_path)]
+            app, ["record", "get-data", "start", "--project", str(dpath_root)]
         )
         assert result.exit_code == 0
         assert "WARNING: step get-data was already started" in result.stderr

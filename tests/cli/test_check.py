@@ -19,7 +19,7 @@ class TestCheck:
         mock_check.return_value = []
         result = runner.invoke(app, ["check", "--project", str(dpath_root)])
         assert result.exit_code == 0
-        mock_check.assert_called_once_with(dpath_root.resolve())
+        mock_check.assert_called_once_with()
 
     def test_default_path(
         self,
@@ -32,7 +32,7 @@ class TestCheck:
         mock_check.return_value = []
         result = runner.invoke(app, ["check"])
         assert result.exit_code == 0
-        mock_check.assert_called_once_with(dpath_root.resolve())
+        mock_check.assert_called_once_with()
 
     @pytest.mark.parametrize("explicit", [True, False])
     def test_subdirectory(
@@ -50,7 +50,7 @@ class TestCheck:
             app, ["check", *(["--project", str(dpath_subdir)] if explicit else [])]
         )
         assert result.exit_code == 0
-        mock_check.assert_called_once_with(dpath_root.resolve())
+        mock_check.assert_called_once_with()
 
     @pytest.mark.parametrize(
         ("check_results", "return_code", "expected_messages"),

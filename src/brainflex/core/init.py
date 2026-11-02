@@ -6,7 +6,6 @@ import shutil
 from pathlib import Path
 
 from brainflex.utils.constants import (
-    BRAINFLEX_DIRNAME,
     ENV_EXAMPLE_FILENAME,
     ENV_FILENAME,
     ENV_VAR_GID,
@@ -37,13 +36,10 @@ def _set_variable(content: str, name: str, value: str) -> str:
 def init(root: Path, fpath_vpn_config: Path) -> None:
     """Create the Docker Compose configuration of the project.
 
-    Raises FileNotFoundError if an expected path doesn't exist, and FileExistsError if
-    the .env file or the VPN configuration file already exists in the project.
+    Raises FileNotFoundError if the VPN configuration file doesn't exist, and
+    FileExistsError if the .env file or the VPN configuration file already exists in
+    the project.
     """
-    dpath_brainflex = root / BRAINFLEX_DIRNAME
-    if not dpath_brainflex.is_dir():
-        raise FileNotFoundError(f"Not a brainflex project: {dpath_brainflex} not found")
-
     if not fpath_vpn_config.is_file():
         raise FileNotFoundError(f"VPN configuration file {fpath_vpn_config} not found")
 

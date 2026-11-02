@@ -61,14 +61,9 @@ def record(root: Path, step: Step, status: Status, notes: str = "") -> None:
     """Add a timestamped row to the status log, creating it if needed.
 
     Warns if a step is started twice or ended without being started.
-    Raises FileNotFoundError if the project is not initialized.
     """
-    dpath_brainflex = root / BRAINFLEX_DIRNAME
-    if not dpath_brainflex.is_dir():
-        raise FileNotFoundError(f"Project not initialized: {dpath_brainflex} not found")
-
     now = datetime.now().astimezone()
-    df = _load_status_log(fpath := dpath_brainflex / STATUS_LOG_FILENAME, now)
+    df = _load_status_log(fpath := root / BRAINFLEX_DIRNAME / STATUS_LOG_FILENAME, now)
 
     statuses = df.query(f"{COL_STEP} == @step")[COL_STATUS]
     last_status = statuses.iloc[-1] if not statuses.empty else None

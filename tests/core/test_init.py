@@ -87,13 +87,6 @@ class TestInit:
         assert fpath_dst.read_text() == VPN_CONFIG
         assert fpath_dst.stat().st_mode & 0o777 == 0o600
 
-    def test_init_not_project(self, root: Path, fpath_vpn_config: Path):
-        (root / BRAINFLEX_DIRNAME).rmdir()
-        with pytest.raises(FileNotFoundError, match="Not a brainflex project"):
-            init(root, fpath_vpn_config)
-        assert not (root / ENV_FILENAME).exists()
-        assert not _fpath_vpn_config_dst(root).exists()
-
     def test_init_no_vpn_config(self, root: Path, tmp_path_factory):
         fpath = tmp_path_factory.mktemp("download") / VPN_CONFIG_FILENAME
         with pytest.raises(FileNotFoundError, match="VPN configuration file"):

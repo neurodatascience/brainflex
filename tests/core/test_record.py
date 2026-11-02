@@ -116,7 +116,3 @@ class TestRecord:
         assert len(df) == 1
         # previous records are discarded, so no start/end warning
         assert len(record_warnings) == 1
-
-    def test_not_initialized(self, tmp_path: Path):
-        with pytest.raises(FileNotFoundError, match="not initialized"):
-            record(tmp_path, Step.GET_DATA, Status.START)

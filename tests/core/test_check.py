@@ -1,6 +1,5 @@
 import subprocess
 import urllib.error
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,28 +12,13 @@ from brainflex.core.check import (
     _check_docker_daemon,
     _check_internet,
     _check_os,
-    _check_project,
     check,
 )
-from brainflex.utils.constants import BRAINFLEX_DIRNAME
 
 
 @pytest.fixture
 def mock_run(mocker: MockerFixture) -> MagicMock:
     return mocker.patch("brainflex.core.check.subprocess.run")
-
-
-class TestCheckProject:
-    def test_initialized(self, tmp_path: Path):
-        (tmp_path / BRAINFLEX_DIRNAME).mkdir()
-        result = _check_project(tmp_path)
-        assert result.passed
-        assert result.required
-
-    def test_not_initialized(self, tmp_path: Path):
-        result = _check_project(tmp_path)
-        assert not result.passed
-        assert "not initialized" in result.message
 
 
 class TestCheckOs:
@@ -133,8 +117,8 @@ class TestCheckInternet:
 
 
 class TestCheck:
-    def test_check(self, mocker: MockerFixture, mock_run: MagicMock, tmp_path: Path):
+    def test_check(self, mocker: MockerFixture, mock_run: MagicMock):
         mocker.patch("brainflex.core.check.urllib.request.urlopen")
-        results = check(tmp_path)
-        assert len(results) == 6
+        results = check()
+        assert len(results) == 5
         assert all(isinstance(r, CheckResult) for r in results)

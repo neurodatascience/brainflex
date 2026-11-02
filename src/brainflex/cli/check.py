@@ -13,7 +13,7 @@ def check_cli(
 ) -> None:
     """Check that prerequisites are satisfied."""
     failed = False
-    for result in check(path):
+    for result in check():
         if result.passed:
             label = typer.style("OK", fg=typer.colors.GREEN)
         elif result.required:

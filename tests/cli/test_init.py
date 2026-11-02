@@ -102,7 +102,7 @@ class TestInit:
         "error",
         [
             FileExistsError("already initialized"),
-            FileNotFoundError("Not a brainflex project"),
+            FileNotFoundError("VPN configuration file not found"),
         ],
     )
     def test_init_error(

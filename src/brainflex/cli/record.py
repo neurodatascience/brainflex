@@ -6,7 +6,6 @@ from typing import Annotated
 import typer
 from rich.prompt import Prompt
 
-from brainflex.cli.console import print_error
 from brainflex.cli.options import RootOption
 from brainflex.core.record import Status, Step, record
 
@@ -24,9 +23,5 @@ def record_cli(
             default=notes,
             show_default=False,
         )
-    try:
-        record(path, step, status, notes=notes)
-    except FileNotFoundError as e:
-        print_error(f"{e}. Run brainflex init.")
-        raise typer.Exit(1) from e
+    record(path, step, status, notes=notes)
     typer.echo(f"Recorded {step} {status}")
