@@ -45,6 +45,26 @@ then
     exit 1
 fi
 
+# restrict traffic relayed between VPN peers
+VPN_RESEARCHER_PORT=${VPN_RESEARCHER_PORT:-50051}
+echo "info: set VPN_RESEARCHER_PORT='${VPN_RESEARCHER_PORT}'"
+configure_forwarding() {
+    iptables -P FORWARD DROP &&
+    iptables -F FORWARD &&
+    iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT &&
+    iptables -A FORWARD -i wg0 -o wg0 -s "$VPN_NODE_IP_ASSIGN" -d "$VPN_RESEARCHER_IP_ASSIGN" \
+        -p tcp --dport "$VPN_RESEARCHER_PORT" -m conntrack --ctstate NEW -j ACCEPT &&
+    # used by scripts/vpn_status on nodes
+    iptables -A FORWARD -i wg0 -o wg0 -s "$VPN_NODE_IP_ASSIGN" -d "$VPN_RESEARCHER_IP_ASSIGN" \
+        -p icmp --icmp-type echo-request -j ACCEPT
+}
+if ! configure_forwarding
+then
+    echo "CRITICAL: could not configure firewall rules for VPN traffic"
+    exit 1
+fi
+echo "info: configured firewall rules for VPN traffic"
+
 echo "VPN server container is ready"
 sleep infinity &
 

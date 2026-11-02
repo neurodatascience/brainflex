@@ -1,5 +1,8 @@
-# Adapted from Fed-BioMed (Apache-2.0), unchanged:
+# Adapted from Fed-BioMed (Apache-2.0):
 # https://github.com/fedbiomed/fedbiomed/blob/v6.4.1/envs/vpn/docker/vpnserver/build_files/vpn/bin/configure_peer.py
+#
+# Changes:
+# - node peers only route the VPN server and researcher addresses through the VPN
 
 import argparse
 from string import Template
@@ -369,11 +372,22 @@ def genconf(peer_type: str, peer_id: str) -> None:
               f"not in VPN network {vpn_net} or not in assign range {assign_net}")
         exit(1)
 
+    # nodes only need to reach the VPN server and the researcher
+    if peer_type == "node":
+        try:
+            researcher_net = ip.IPv4Network(os.environ["VPN_RESEARCHER_IP_ASSIGN"])
+        except (ip.AddressValueError, ip.NetmaskValueError, KeyError) as e:
+            print(f"CRITICAL: bad `VPN_RESEARCHER_IP_ASSIGN` in config gives errors: {e}")
+            exit(1)
+        server_allowed_ips = f"{os.environ['VPN_IP']}/32,{researcher_net}"
+    else:
+        server_allowed_ips = str(vpn_net)
+
     mapping = {
         "vpn_ip": peer_addr_ip,
         "vpn_subnet_prefix": os.environ['VPN_SUBNET_PREFIX'],
         "vpn_server_endpoint": f"{os.environ['VPN_SERVER_PUBLIC_ADDR']}:{os.environ['VPN_SERVER_PORT']}",
-        "vpn_server_allowed_ips": str(vpn_net),
+        "vpn_server_allowed_ips": server_allowed_ips,
         "vpn_server_public_key": server_public_key,
         "vpn_server_psk": peer_psk,
         "fedbiomed_id": peer_id,

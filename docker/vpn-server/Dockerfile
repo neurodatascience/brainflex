@@ -8,9 +8,10 @@
 
 FROM vpn-client
 
-# needed by configure_peer.py
+# python3 and python3-tabulate are needed by configure_peer.py
+# iptables is needed to restrict traffic between VPN peers
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-tabulate && \
+    apt-get install -y --no-install-recommends python3 python3-tabulate iptables && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /fedbiomed
