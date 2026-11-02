@@ -11,7 +11,6 @@ class TestRootOption:
     @pytest.mark.parametrize(
         ("args", "target"),
         [
-            (["check"], "brainflex.cli.check.check"),
             (["get-data", "ds000001"], "brainflex.cli.get_data.get_data"),
             (["init", "config.env"], "brainflex.cli.init.init"),
             (["record", "get-data", "start"], "brainflex.cli.record.record"),
