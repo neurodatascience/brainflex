@@ -38,7 +38,18 @@ python -m http.server
 ### Docker images
 
 - `vpn-client`: WireGuard VPN client
+  ([`ghcr.io/neurodatascience/brainflex-vpn-client`](https://github.com/neurodatascience/brainflex/pkgs/container/brainflex-vpn-client))
 - `vpn-server`: WireGuard VPN server, built on top of `vpn-client`
+  ([`ghcr.io/neurodatascience/brainflex-vpn-server`](https://github.com/neurodatascience/brainflex/pkgs/container/brainflex-vpn-server))
+
+To build locally:
+
+```bash
+docker build -t vpn-client docker/vpn-client
+docker build -t vpn-server docker/vpn-server
+```
+
+Pushing a `docker/vX.Y.Z` tag builds both images and publishes them to GHCR with tags `X.Y.Z` and `latest`.
 
 ### Releases
 
