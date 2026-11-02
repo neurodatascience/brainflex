@@ -26,10 +26,6 @@ COL_STATUS = "status"
 COL_NOTES = "notes"
 STATUS_LOG_COLUMNS = (COL_TIMESTAMP, COL_STEP, COL_STATUS, COL_NOTES)
 
-# check
-INTERNET_CHECK_URL = "https://www.google.com"
-CHECK_TIMEOUT = 10  # seconds
-
 # get-data
 OPENNEURO_BUCKET = "openneuro.org"
 OPENNEURO_REGION = "us-east-1"

@@ -5,7 +5,6 @@ from typing import Annotated
 import typer
 
 from brainflex import __version__
-from brainflex.cli.check import check_cli
 from brainflex.cli.get_data import get_data_cli
 from brainflex.cli.init import init_cli
 from brainflex.cli.record import record_cli
@@ -37,7 +36,6 @@ def main(
     """Brain federated learning experiment."""
 
 
-app.command("check")(check_cli)
 app.command("get-data")(get_data_cli)
 app.command("init")(init_cli)
 app.command("record")(record_cli)

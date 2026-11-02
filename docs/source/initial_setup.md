@@ -33,17 +33,6 @@ brainflex init <CONFIG_ENV>
 <!-- TODO output -->
 <!-- TODO do not commit .env or config.env -->
 
-## Prerequisites check
-
-Check that the prerequisites are satisfied:
-
-```bash
-brainflex check
-```
-
-Any check marked as `FAIL` must be fixed before continuing.
-Checks marked as `WARN` are not required.
-
 ## Data download
 
 Download the OpenNeuro dataset assigned to your site, replacing `<DATASET_ID>` with its ID (beginnign with `ds`):
