@@ -121,6 +121,20 @@ Replies from the server must also be allowed back in.
 
 ## Node configuration
 
+```{attention}
+`config.env` and `.env` are Git-ignored and should never be shared.
+```
+
+### `config.env` file
+
+Put the `config.env` file that was shared with you in the `vpn_config/` directory:
+
+```bash
+mv <PATH_TO_CONFIG_ENV> vpn_config/config.env
+```
+
+### `.env` file
+
 Create a `.env` file from the provided template:
 
 ```bash
@@ -177,12 +191,6 @@ FBM_SECURITY_ALLOW_FEDERATED_ANALYTICS=True
 ```
 
 :::
-
-Put the `config.env` file that was shared with you in the `vpn_config/` directory (i.e. at `vpn_config/config.env`).
-
-```{attention}
-`.env` and `config.env` are Git-ignored and should never be shared.
-```
 
 ## Data download
 
