@@ -60,8 +60,14 @@ To create a release, tag the latest commit on the upstream `main` branch and pus
 
 ```bash
 git fetch upstream
+
+# Docker images
 git tag -a docker/vX.Y.Z upstream/main -m "Docker images vX.Y.Z"
 git push upstream docker/vX.Y.Z
+
+# CLI
+git tag -a cli/vX.Y.Z upstream/main -m "CLI vX.Y.Z"
+git push upstream cli/vX.Y.Z
 ```
 
 Tags must be on `main`: the Docker image workflow refuses to publish images for tags on other commits.
