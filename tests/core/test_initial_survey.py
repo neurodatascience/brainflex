@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -51,7 +50,6 @@ class TestInitialSurvey:
         assert row["nipoppy_familiarity"] == "1"
         assert row["neurobagel_familiarity"] == "3"
         assert row["fedbiomed_familiarity"] == "5"
-        assert datetime.fromisoformat(row["timestamp"]).tzinfo is not None
 
     def test_exists(self, root: Path, fpath_survey: Path):
         fpath_survey.write_text("existing")

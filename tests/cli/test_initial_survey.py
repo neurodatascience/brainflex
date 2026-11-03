@@ -104,4 +104,4 @@ class TestInitialSurvey:
             input="1\n3\n5\n",
         )
         assert result.exit_code == 0
-        assert fpath_survey.read_text().splitlines()[1].endswith("\t1\t3\t5")
+        assert fpath_survey.read_text().splitlines()[1] == "1\t3\t5"

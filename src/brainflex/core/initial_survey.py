@@ -1,6 +1,5 @@
 """Survey on prior experience, answered before the experiment."""
 
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +9,6 @@ from brainflex.utils.constants import (
     COL_FEDBIOMED_FAMILIARITY,
     COL_NEUROBAGEL_FAMILIARITY,
     COL_NIPOPPY_FAMILIARITY,
-    COL_TIMESTAMP,
     INITIAL_SURVEY_COLUMNS,
     INITIAL_SURVEY_FILENAME,
     LIKERT_CHOICES,
@@ -56,10 +54,6 @@ def initial_survey(
 
     fpath = check_initial_survey_path(root, overwrite=overwrite)
 
-    row = {
-        COL_TIMESTAMP: datetime.now().astimezone().isoformat(timespec="seconds"),
-        **answers,
-    }
-    pd.DataFrame([row], columns=INITIAL_SURVEY_COLUMNS).to_csv(
+    pd.DataFrame([answers], columns=INITIAL_SURVEY_COLUMNS).to_csv(
         fpath, sep="\t", index=False
     )
