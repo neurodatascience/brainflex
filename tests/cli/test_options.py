@@ -13,7 +13,8 @@ class TestRootOption:
         [
             (["get-data", "ds000001"], "brainflex.cli.get_data.get_data"),
             (["init", "config.env"], "brainflex.cli.init.init"),
-            (["record", "get-data", "start"], "brainflex.cli.record.record"),
+            (["initial-survey"], "brainflex.cli.initial_survey.initial_survey"),
+            (["record", "idp_extraction", "start"], "brainflex.cli.record.record"),
         ],
     )
     @pytest.mark.parametrize("explicit", [True, False])

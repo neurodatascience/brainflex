@@ -1,28 +1,39 @@
 """Record the start and end of experiment steps."""
 
 import warnings
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
-import pandas as pd
-
 from brainflex.utils.constants import (
-    BACKUP_TIMESTAMP_FORMAT,
     BRAINFLEX_DIRNAME,
-    COL_NOTES,
+    COL_ANSWER,
+    COL_QUESTION,
     COL_STATUS,
     COL_STEP,
     COL_TIMESTAMP,
-    STATUS_LOG_COLUMNS,
-    STATUS_LOG_FILENAME,
+    LIKERT_CHOICES,
+    QUESTION_NOTES,
+    QUESTION_TIME_WITHOUT_TOOLS,
+    QUESTION_TOOLS_EASIER,
+    STEP_SURVEY_COLUMNS,
+    STEP_SURVEY_FILENAME,
+    TIME_WITHOUT_TOOLS_CHOICES,
+    TIMESTAMPS_COLUMNS,
+    TIMESTAMPS_FILENAME,
 )
+from brainflex.utils.tsv import append_tsv, load_tsv
 
 
 class Step(StrEnum):
     """Experiment steps."""
 
-    GET_DATA = "get-data"
+    IDP_EXTRACTION = "idp_extraction"
+    SEMANTIC_HARMONIZATION = "semantic_harmonization"
+    FL_READY_DATA = "fl_ready_data"
+    FEDBIOMED_NODE_PART_1 = "fedbiomed_node_part_1"
+    FEDBIOMED_NODE_PART_2 = "fedbiomed_node_part_2"
 
 
 class Status(StrEnum):
@@ -32,40 +43,61 @@ class Status(StrEnum):
     END = "end"
 
 
-def _load_status_log(fpath: Path, now: datetime) -> pd.DataFrame:
-    """Load the status log, or return an empty one if it does not exist.
+DATA_PREP_STEPS = frozenset(
+    {Step.IDP_EXTRACTION, Step.SEMANTIC_HARMONIZATION, Step.FL_READY_DATA}
+)
 
-    If the file cannot be parsed or is missing expected columns, it is moved to a
-    timestamped backup and an empty log is returned.
-    """
-    if not fpath.exists():
-        return pd.DataFrame(columns=STATUS_LOG_COLUMNS)
-
-    try:
-        df = pd.read_csv(fpath, sep="\t", dtype=str, keep_default_na=False)
-    except (pd.errors.EmptyDataError, pd.errors.ParserError):
-        df = None
-
-    if df is not None and set(STATUS_LOG_COLUMNS).issubset(df.columns):
-        return df
-
-    fpath_backup = fpath.with_name(
-        f"{fpath.stem}-{now.strftime(BACKUP_TIMESTAMP_FORMAT)}{fpath.suffix}"
-    )
-    fpath.rename(fpath_backup)
-    warnings.warn(f"invalid status log moved to {fpath_backup}", stacklevel=3)
-    return pd.DataFrame(columns=STATUS_LOG_COLUMNS)
+# questions asked at the end of a step, mapped to their allowed answers
+# (None for free text), in the order they are asked
+DATA_PREP_QUESTIONS: dict[str, tuple[str, ...] | None] = {
+    QUESTION_TOOLS_EASIER: LIKERT_CHOICES,
+    QUESTION_TIME_WITHOUT_TOOLS: TIME_WITHOUT_TOOLS_CHOICES,
+}
+COMMON_QUESTIONS: dict[str, tuple[str, ...] | None] = {QUESTION_NOTES: None}
 
 
-def record(root: Path, step: Step, status: Status, notes: str = "") -> None:
-    """Add a timestamped row to the status log, creating it if needed.
+def get_step_questions(step: Step) -> dict[str, tuple[str, ...] | None]:
+    """Return the questions asked at the end of a step, mapped to allowed answers."""
+    if step in DATA_PREP_STEPS:
+        return DATA_PREP_QUESTIONS | COMMON_QUESTIONS
+    return dict(COMMON_QUESTIONS)
 
-    Warns if a step is started twice or ended without being started.
-    """
-    now = datetime.now().astimezone()
-    df = _load_status_log(fpath := root / BRAINFLEX_DIRNAME / STATUS_LOG_FILENAME, now)
 
-    statuses = df.query(f"{COL_STEP} == @step")[COL_STATUS]
+def _check_answers(
+    step: Step, status: Status, answers: Mapping[str, str]
+) -> dict[str, tuple[str, ...] | None]:
+    """Raise ValueError if the answers don't match the questions for the step."""
+    questions = get_step_questions(step) if status == Status.END else {}
+    if set(answers) != set(questions):
+        raise ValueError(
+            f"Answers for {step} {status} must be given for exactly these"
+            f" questions: {list(questions)}"
+        )
+    for question, answer in answers.items():
+        choices = questions[question]
+        if choices is not None and answer not in choices:
+            raise ValueError(
+                f"Invalid answer {answer!r} to {question!r}:"
+                f" must be one of {', '.join(choices)}"
+            )
+    return questions
+
+
+def record(
+    root: Path,
+    step: Step,
+    status: Status,
+    answers: Mapping[str, str] | None = None,
+) -> None:
+    """Record the start or end of a step + some survey answers."""
+    answers = answers or {}
+    questions = _check_answers(step, status, answers)
+
+    dpath = root / BRAINFLEX_DIRNAME
+    fpath_timestamps = dpath / TIMESTAMPS_FILENAME
+    df_timestamps = load_tsv(fpath_timestamps, TIMESTAMPS_COLUMNS)
+
+    statuses = df_timestamps.query(f"{COL_STEP} == @step")[COL_STATUS]
     last_status = statuses.iloc[-1] if not statuses.empty else None
     if status == Status.START and last_status == Status.START:
         warnings.warn(f"step {step} was already started", stacklevel=2)
@@ -73,10 +105,18 @@ def record(root: Path, step: Step, status: Status, notes: str = "") -> None:
         warnings.warn(f"step {step} was not started", stacklevel=2)
 
     row = {
-        COL_TIMESTAMP: now.isoformat(timespec="seconds"),
+        COL_TIMESTAMP: datetime.now().astimezone().isoformat(timespec="seconds"),
         COL_STEP: str(step),
         COL_STATUS: str(status),
-        COL_NOTES: notes,
     }
-    df = pd.concat([df, pd.DataFrame([row], columns=STATUS_LOG_COLUMNS)])
-    df.to_csv(fpath, sep="\t", index=False)
+    append_tsv(fpath_timestamps, TIMESTAMPS_COLUMNS, [row], df=df_timestamps)
+
+    if questions:
+        append_tsv(
+            dpath / STEP_SURVEY_FILENAME,
+            STEP_SURVEY_COLUMNS,
+            (
+                {COL_STEP: str(step), COL_QUESTION: q, COL_ANSWER: answers[q]}
+                for q in questions
+            ),
+        )

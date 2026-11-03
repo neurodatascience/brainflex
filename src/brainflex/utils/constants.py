@@ -19,14 +19,12 @@ VPN_CONFIG_DIRNAME = "vpn_config"
 VPN_CONFIG_FILENAME = "config.env"
 VPN_CONFIG_VAR_NODE_ID = "FEDBIOMED_NODEID"
 
-# record
-STATUS_LOG_FILENAME = "status_log.tsv"
+# surveys
+COL_QUESTION = "question"
+COL_ANSWER = "answer"
+SURVEY_COLUMNS = (COL_QUESTION, COL_ANSWER)
+LIKERT_CHOICES = ("1", "2", "3", "4", "5")
 BACKUP_TIMESTAMP_FORMAT = "%Y%m%dT%H%M%S"
-COL_TIMESTAMP = "timestamp"
-COL_STEP = "step"
-COL_STATUS = "status"
-COL_NOTES = "notes"
-STATUS_LOG_COLUMNS = (COL_TIMESTAMP, COL_STEP, COL_STATUS, COL_NOTES)
 
 # initial-survey
 INITIAL_SURVEY_FILENAME = "initial_survey.tsv"
@@ -34,10 +32,23 @@ INITIAL_SURVEY_QUESTIONS = tuple(
     f"How familiar are you with {tool}?"
     for tool in ("Nipoppy", "Neurobagel", "Fed-BioMed")
 )
-COL_QUESTION = "question"
-COL_ANSWER = "answer"
-SURVEY_COLUMNS = (COL_QUESTION, COL_ANSWER)
-LIKERT_CHOICES = ("1", "2", "3", "4", "5")
+
+# record
+TIMESTAMPS_FILENAME = "timestamps.tsv"
+COL_TIMESTAMP = "timestamp"
+COL_STEP = "step"
+COL_STATUS = "status"
+TIMESTAMPS_COLUMNS = (COL_TIMESTAMP, COL_STEP, COL_STATUS)
+STEP_SURVEY_FILENAME = "step_survey.tsv"
+STEP_SURVEY_COLUMNS = (COL_STEP, *SURVEY_COLUMNS)
+QUESTION_TOOLS_EASIER = (
+    "By how much did the Nipoppy/Neurobagel tools make things easier?"
+)
+QUESTION_TIME_WITHOUT_TOOLS = (
+    "How long do you think this would have taken without the Nipoppy/Neurobagel tools?"
+)
+TIME_WITHOUT_TOOLS_CHOICES = ("<1h", "1-4h", "4-8h", "1-3d", "3-7d", ">7d")
+QUESTION_NOTES = "Notes/feedback"
 
 # get-data
 OPENNEURO_BUCKET = "openneuro.org"
