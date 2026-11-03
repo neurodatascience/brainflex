@@ -54,4 +54,14 @@ Pushing a `docker/vX.Y.Z` tag builds both images and publishes them to GHCR with
 ### Releases
 
 CLI releases are tagged `cli/vX.Y.Z`.
-Docker image releases are tagged `docker/vX.Y.Z`
+Docker image releases are tagged `docker/vX.Y.Z`.
+
+To create a release, tag the latest commit on the upstream `main` branch and push the tag upstream:
+
+```bash
+git fetch upstream
+git tag -a docker/vX.Y.Z upstream/main -m "Docker images vX.Y.Z"
+git push upstream docker/vX.Y.Z
+```
+
+Tags must be on `main`: the Docker image workflow refuses to publish images for tags on other commits.
