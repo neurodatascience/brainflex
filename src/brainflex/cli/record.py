@@ -33,5 +33,7 @@ def record_cli(
                 answers[question] = Prompt.ask(
                     f"{question}{hint}", choices=list(choices)
                 )
-    record(path, step, status, answers=answers)
-    typer.echo(f"Recorded {step} {status}")
+    fpath_timestamps, fpath_survey = record(path, step, status, answers=answers)
+    typer.echo(f"Saved timestamp for ({step}, {status}) to {fpath_timestamps}")
+    if fpath_survey is not None:
+        typer.echo(f"Saved answers to {fpath_survey}")

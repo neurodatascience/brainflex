@@ -66,7 +66,10 @@ class TestGetStepQuestions:
 
 class TestRecord:
     def test_start(self, root: Path, fpath_timestamps: Path, fpath_survey: Path):
-        record(root, Step.IDP_EXTRACTION, Status.START)
+        assert record(root, Step.IDP_EXTRACTION, Status.START) == (
+            fpath_timestamps,
+            None,
+        )
         df = _read(fpath_timestamps)
         assert tuple(df.columns) == TIMESTAMPS_COLUMNS
         assert len(df) == 1
@@ -80,7 +83,9 @@ class TestRecord:
         self, root: Path, fpath_timestamps: Path, fpath_survey: Path
     ):
         record(root, Step.IDP_EXTRACTION, Status.START)
-        record(root, Step.IDP_EXTRACTION, Status.END, answers=DATA_PREP_ANSWERS)
+        assert record(
+            root, Step.IDP_EXTRACTION, Status.END, answers=DATA_PREP_ANSWERS
+        ) == (fpath_timestamps, fpath_survey)
         assert list(_read(fpath_timestamps)["status"]) == ["start", "end"]
         assert fpath_timestamps.read_text().count("timestamp") == 1
         df = _read(fpath_survey)
@@ -90,11 +95,11 @@ class TestRecord:
             for q, a in DATA_PREP_ANSWERS.items()
         ]
 
-    def test_end_other(self, root: Path, fpath_survey: Path):
+    def test_end_other(self, root: Path, fpath_timestamps: Path, fpath_survey: Path):
         record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
-        record(
+        assert record(
             root, Step.FEDBIOMED_NODE_PART_1, Status.END, answers={QUESTION_NOTES: ""}
-        )
+        ) == (fpath_timestamps, fpath_survey)
         assert _read(fpath_survey).to_dict("records") == [
             {"step": "fedbiomed_node_part_1", "question": QUESTION_NOTES, "answer": ""}
         ]

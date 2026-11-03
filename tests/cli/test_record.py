@@ -24,9 +24,17 @@ def _unwrap(text: str) -> str:
     return " ".join(text.split())
 
 
+FPATH_TIMESTAMPS = Path("timestamps.tsv")
+FPATH_SURVEY = Path("step_survey.tsv")
+
+
+def _fake_record(*args, answers: dict[str, str], **kwargs) -> tuple[Path, Path | None]:
+    return FPATH_TIMESTAMPS, FPATH_SURVEY if answers else None
+
+
 @pytest.fixture
 def mock_record(mocker: MockerFixture) -> MagicMock:
-    return mocker.patch("brainflex.cli.record.record")
+    return mocker.patch("brainflex.cli.record.record", side_effect=_fake_record)
 
 
 class TestRecord:
@@ -36,7 +44,11 @@ class TestRecord:
         )
         assert result.exit_code == 0
         assert "?" not in result.stdout
-        assert "Recorded idp_extraction start" in result.stdout
+        assert (
+            f"Saved timestamp for (idp_extraction, start) to {FPATH_TIMESTAMPS}"
+            in result.stdout
+        )
+        assert "Saved answers" not in result.stdout
         mock_record.assert_called_once_with(
             dpath_root.resolve(), Step.IDP_EXTRACTION, Status.START, answers={}
         )
@@ -62,6 +74,11 @@ class TestRecord:
         assert QUESTION_NOTES in stdout
         assert QUESTION_TOOLS_EASIER not in stdout
         assert QUESTION_TIME_WITHOUT_TOOLS not in stdout
+        assert (
+            f"Saved timestamp for (fedbiomed_node_part_1, end) to {FPATH_TIMESTAMPS}"
+            in result.stdout
+        )
+        assert f"Saved answers to {FPATH_SURVEY}" in result.stdout
         mock_record.assert_called_once_with(
             dpath_root.resolve(),
             Step.FEDBIOMED_NODE_PART_1,
@@ -88,6 +105,10 @@ class TestRecord:
             < stdout.index(QUESTION_TIME_WITHOUT_TOOLS)
             < stdout.index(QUESTION_NOTES)
         )
+        assert (
+            f"Saved timestamp for ({step}, end) to {FPATH_TIMESTAMPS}" in result.stdout
+        )
+        assert f"Saved answers to {FPATH_SURVEY}" in result.stdout
         mock_record.assert_called_once_with(
             dpath_root.resolve(),
             step,
@@ -170,9 +191,11 @@ class TestRecord:
         mock_record.assert_not_called()
 
     def test_warning(self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path):
-        mock_record.side_effect = lambda *args, **kwargs: warnings.warn(
-            "step idp_extraction was already started", stacklevel=2
-        )
+        def _warn(*args, **kwargs) -> tuple[Path, Path | None]:
+            warnings.warn("step idp_extraction was already started", stacklevel=2)
+            return _fake_record(*args, **kwargs)
+
+        mock_record.side_effect = _warn
         result = runner.invoke(
             app, ["record", "idp_extraction", "start", "--project", str(dpath_root)]
         )
@@ -183,9 +206,22 @@ class TestRecord:
         args = ["record", "fl_ready_data", "--project", str(dpath_root)]
         args_start = [*args[:2], "start", *args[2:]]
         args_end = [*args[:2], "end", *args[2:]]
-        assert runner.invoke(app, args_start).exit_code == 0
-        assert runner.invoke(app, args_end, input="3\n<1h\nok\n").exit_code == 0
-        dpath = dpath_root / BRAINFLEX_DIRNAME
+        dpath = dpath_root.resolve() / BRAINFLEX_DIRNAME
+        result = runner.invoke(app, args_start)
+        assert result.exit_code == 0
+        fpath_timestamps = dpath / TIMESTAMPS_FILENAME
+        assert (
+            f"Saved timestamp for (fl_ready_data, start) to {fpath_timestamps}"
+            in result.stdout
+        )
+        assert "Saved answers" not in result.stdout
+        result = runner.invoke(app, args_end, input="3\n<1h\nok\n")
+        assert result.exit_code == 0
+        assert (
+            f"Saved timestamp for (fl_ready_data, end) to {fpath_timestamps}"
+            in result.stdout
+        )
+        assert f"Saved answers to {dpath / STEP_SURVEY_FILENAME}" in result.stdout
         df_timestamps = pd.read_csv(dpath / TIMESTAMPS_FILENAME, sep="\t", dtype=str)
         assert list(df_timestamps.columns) == ["timestamp", "step", "status"]
         assert list(df_timestamps["status"]) == ["start", "end"]

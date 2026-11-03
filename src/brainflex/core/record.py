@@ -88,8 +88,11 @@ def record(
     step: Step,
     status: Status,
     answers: Mapping[str, str] | None = None,
-) -> None:
-    """Record the start or end of a step + some survey answers."""
+) -> tuple[Path, Path | None]:
+    """Record the start or end of a step + some survey answers.
+
+    Returns the paths to the timestamps file and to the survey file (if applicable).
+    """
     answers = answers or {}
     questions = _check_answers(step, status, answers)
 
@@ -111,12 +114,16 @@ def record(
     }
     append_tsv(fpath_timestamps, TIMESTAMPS_COLUMNS, [row], df=df_timestamps)
 
-    if questions:
-        append_tsv(
-            dpath / STEP_SURVEY_FILENAME,
-            STEP_SURVEY_COLUMNS,
-            (
-                {COL_STEP: str(step), COL_QUESTION: q, COL_ANSWER: answers[q]}
-                for q in questions
-            ),
-        )
+    if not questions:
+        return fpath_timestamps, None
+
+    fpath_survey = dpath / STEP_SURVEY_FILENAME
+    append_tsv(
+        fpath_survey,
+        STEP_SURVEY_COLUMNS,
+        (
+            {COL_STEP: str(step), COL_QUESTION: q, COL_ANSWER: answers[q]}
+            for q in questions
+        ),
+    )
+    return fpath_timestamps, fpath_survey
