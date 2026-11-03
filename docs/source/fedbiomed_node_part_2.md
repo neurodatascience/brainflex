@@ -9,7 +9,7 @@ scripts/vpn_status
 ```
 
 ```{code-block}
-:caption: Output
+:caption: Example output
 ** Checking docker containers & VPN access: vpn node
 - container vpn is running
 - container node is running
