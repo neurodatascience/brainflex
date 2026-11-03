@@ -17,6 +17,7 @@ includehidden:
 titlesonly:
 caption: Instructions
 ---
+prerequisites
 initial_setup
 freesurfer_idps
 phenotypic_files
