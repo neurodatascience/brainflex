@@ -1,5 +1,11 @@
 # Fed-BioMed node: Part 2
 
+## Record start time
+
+```bash
+brainflex record fedbiomed_node_part_2 start
+```
+
 ## Check VPN connection
 
 Check that the VPN server and the researcher are reachable:
@@ -35,3 +41,9 @@ docker compose exec -u fedbiomed node fedbiomed node -p /fbm-node training-plan 
 ```
 
 Once both training plans are approved, the node is ready for training!
+
+## Record end time
+
+```bash
+brainflex record fedbiomed_node_part_2 end
+```

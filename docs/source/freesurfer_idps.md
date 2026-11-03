@@ -1,5 +1,11 @@
 # FreeSurfer IDPs
 
+## Record start time
+
+```bash
+brainflex record idp_extraction start
+```
+
 ## Install pipelines
 
 Install the FreeSurfer and FreeSurfer stats extraction pipelines:
@@ -94,4 +100,10 @@ nipoppy_study/derivatives/freesurfer/7.3.2/idp
     ├── fs7.3.2-aparc-meancurv.tsv
     ├── fs7.3.2-aparc-thickness.tsv
     └── fs7.3.2-aseg-volume.tsv
+```
+
+## Record end time and answer questions
+
+```bash
+brainflex record idp_extraction end
 ```

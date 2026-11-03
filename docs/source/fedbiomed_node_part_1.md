@@ -4,6 +4,12 @@ We will be using [Fed-BioMed](https://fedbiomed.org/) to conduct the federated l
 See [this page](https://fedbiomed.org/federated-network/) of the Fed-BioMed website for more information about how it works.
 Essentially, each site participating in the federated experiment needs to deploy a **node**, and the person responsible for running the experiment (i.e. training the models) deploys a server (**researcher** in Fed-BioMed vocabulary) to which all nodes connect to.
 
+## Record start time
+
+```bash
+brainflex record fedbiomed_node_part_1 start
+```
+
 ## Deploy the node
 
 Run this to download the images (if needed) and start them:
@@ -76,4 +82,13 @@ brainflex-vpn-default  | info: wireguard public key for this peer: <PUBLIC_KEY>
 ```
 
 Copy the public key (or the entire output of the previous command) and send it to us via email.
-Then wait until you hear back before doing [Part 2](fedbiomed_node_part_2).
+
+## Record end time
+
+```bash
+brainflex record fedbiomed_node_part_1 end
+```
+
+## Wait
+
+Once all the above steps are done, wait until you hear back from the FL experiment coordinator before doing [Part 2](fedbiomed_node_part_2).

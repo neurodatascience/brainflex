@@ -1,5 +1,11 @@
 # FL-ready dataset
 
+## Record start time
+
+```bash
+brainflex record fl_ready_data start
+```
+
 ## Pipeline installation
 
 Install the Nipoppy-to-Fed-BioMed conversion pipeline:
@@ -50,4 +56,10 @@ nipoppy_study/derivatives/nipoppy2fedbiomed
         └── sex
             ├── dataset.csv
             └── dataset_info.json
+```
+
+## Record end time and answer questions
+
+```bash
+brainflex record fl_ready_data end
 ```

@@ -1,5 +1,11 @@
 # Phenotypic files
 
+## Record start time
+
+```bash
+brainflex record semantic_harmonization start
+```
+
 ## Annotation
 
 Download the following files to your local machine:
@@ -49,3 +55,9 @@ sub-8	ses-unnamed	snomed:248152002	55.0
 sub-9	ses-unnamed	snomed:248153007	60.0
 ```
 <!-- markdownlint-enable MD010 -->
+
+## Record end time and answer questions
+
+```bash
+brainflex record semantic_harmonization end
+```
