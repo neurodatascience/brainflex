@@ -19,6 +19,11 @@ from brainflex.utils.constants import (
 )
 
 
+def _unwrap(text: str) -> str:
+    """Collapse whitespace so that prompts wrapped by rich can be matched."""
+    return " ".join(text.split())
+
+
 @pytest.fixture
 def mock_record(mocker: MockerFixture) -> MagicMock:
     return mocker.patch("brainflex.cli.record.record")
@@ -53,9 +58,10 @@ class TestRecord:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert QUESTION_NOTES in result.stdout
-        assert QUESTION_TOOLS_EASIER not in result.stdout
-        assert QUESTION_TIME_WITHOUT_TOOLS not in result.stdout
+        stdout = _unwrap(result.stdout)
+        assert QUESTION_NOTES in stdout
+        assert QUESTION_TOOLS_EASIER not in stdout
+        assert QUESTION_TIME_WITHOUT_TOOLS not in stdout
         mock_record.assert_called_once_with(
             dpath_root.resolve(),
             Step.FEDBIOMED_NODE_PART_1,
@@ -75,7 +81,7 @@ class TestRecord:
             input="4\n1-4h\nwent fine\n",
         )
         assert result.exit_code == 0
-        stdout = result.stdout
+        stdout = _unwrap(result.stdout)
         # questions are asked in order, with the free-form question last
         assert (
             stdout.index(QUESTION_TOOLS_EASIER)
