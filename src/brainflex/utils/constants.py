@@ -28,6 +28,19 @@ COL_STATUS = "status"
 COL_NOTES = "notes"
 STATUS_LOG_COLUMNS = (COL_TIMESTAMP, COL_STEP, COL_STATUS, COL_NOTES)
 
+# initial-survey
+INITIAL_SURVEY_FILENAME = "initial_survey.tsv"
+COL_NIPOPPY_FAMILIARITY = "nipoppy_familiarity"
+COL_NEUROBAGEL_FAMILIARITY = "neurobagel_familiarity"
+COL_FEDBIOMED_FAMILIARITY = "fedbiomed_familiarity"
+INITIAL_SURVEY_COLUMNS = (
+    COL_TIMESTAMP,
+    COL_NIPOPPY_FAMILIARITY,
+    COL_NEUROBAGEL_FAMILIARITY,
+    COL_FEDBIOMED_FAMILIARITY,
+)
+LIKERT_CHOICES = ("1", "2", "3", "4", "5")
+
 # get-data
 OPENNEURO_BUCKET = "openneuro.org"
 OPENNEURO_REGION = "us-east-1"

@@ -135,6 +135,14 @@ This creates a `.env` file in the repository root and copies the `config.env` fi
 `.env` and `config.env` are Git-ignored and should never be shared.
 ```
 
+## Initial survey
+
+Answer a short survey about your prior experience with Nipoppy, Neurobagel and Fed-BioMed:
+
+```bash
+brainflex initial-survey
+```
+
 ## Data download
 
 Download the OpenNeuro dataset assigned to your site, replacing `<DATASET_ID>` with its ID (beginning with `ds`):
