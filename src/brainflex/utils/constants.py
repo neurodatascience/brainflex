@@ -1,23 +1,8 @@
 """Constants."""
 
-from pathlib import Path
-
 # project
 NIPOPPY_STUDY_DIRNAME = "nipoppy_study"
 BRAINFLEX_DIRNAME = ".brainflex"
-PACKAGE_ROOT_DIR = Path(__file__).parent.parent
-PACKAGE_DATA_DIR = PACKAGE_ROOT_DIR / "data"
-
-# init
-ENV_FILENAME = ".env"
-ENV_EXAMPLE_FILENAME = ".env.example"
-ENV_VAR_UID = "CONTAINER_UID"
-ENV_VAR_GID = "CONTAINER_GID"
-ENV_VAR_NIPOPPY_ROOT = "NIPOPPY_ROOT"
-ENV_VAR_NODE_NAME = "FBM_NODE_NAME"
-VPN_CONFIG_DIRNAME = "vpn_config"
-VPN_CONFIG_FILENAME = "config.env"
-VPN_CONFIG_VAR_NODE_ID = "FEDBIOMED_NODEID"
 
 # record
 STATUS_LOG_FILENAME = "status_log.tsv"

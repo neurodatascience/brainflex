@@ -12,7 +12,6 @@ class TestRootOption:
         ("args", "target"),
         [
             (["get-data", "ds000001"], "brainflex.cli.get_data.get_data"),
-            (["init", "config.env"], "brainflex.cli.init.init"),
             (["record", "get-data", "start"], "brainflex.cli.record.record"),
         ],
     )

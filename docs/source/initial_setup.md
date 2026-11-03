@@ -119,17 +119,20 @@ If `docker` is not in any of the groups listed, follow [this guide](https://docs
 In order to join the federated network, the machine needs to have outbound UDP access to an external server (see `VPN_SERVER_ENDPOINT` in `config.env` file).
 Replies from the server must also be allowed back in.
 
-## Project initialization
+## Node configuration
 
-From inside the `brainflex-node` directory, initialize configuration files specific to your node.
+Create a `.env` file from the provided template:
 
 ```bash
-brainflex init <CONFIG_ENV>
+cp .env.example .env
 ```
 
-Where `<CONFIG_ENV>` is the path to the `config.env`.
+Edit `.env` and set:
 
-This creates a `.env` file in the repository root and copies the `config.env` file to the `vpn_config/` directory.
+- `CONTAINER_UID` and `CONTAINER_GID` to the output of `id -u` and `id -g`, respectively
+- `FBM_NODE_NAME` to the value of `FEDBIOMED_NODEID` in the `config.env` file that was shared with you
+
+Put the `config.env` file that was shared with you in the `vpn_config/` directory (i.e. at `vpn_config/config.env`).
 
 ```{attention}
 `.env` and `config.env` are Git-ignored and should never be shared.
