@@ -119,22 +119,6 @@ If `docker` is not in any of the groups listed, follow [this guide](https://docs
 In order to join the federated network, the machine needs to have outbound UDP access to an external server (see `VPN_SERVER_ENDPOINT` in `config.env` file).
 Replies from the server must also be allowed back in.
 
-## Project initialization
-
-From inside the `brainflex-node` directory, initialize configuration files specific to your node.
-
-```bash
-brainflex init <CONFIG_ENV>
-```
-
-Where `<CONFIG_ENV>` is the path to the `config.env`.
-
-This creates a `.env` file in the repository root and copies the `config.env` file to the `vpn_config/` directory.
-
-```{attention}
-`.env` and `config.env` are Git-ignored and should never be shared.
-```
-
 ## Initial survey
 
 Answer a short survey about your prior experience with Nipoppy, Neurobagel and Fed-BioMed:
@@ -142,6 +126,79 @@ Answer a short survey about your prior experience with Nipoppy, Neurobagel and F
 ```bash
 brainflex initial-survey
 ```
+
+## Node configuration
+
+```{attention}
+`config.env` and `.env` are Git-ignored and should never be shared.
+```
+
+### `config.env` file
+
+Put the `config.env` file that was shared with you in the `vpn_config/` directory:
+
+```bash
+mv <PATH_TO_CONFIG_ENV> vpn_config/config.env
+```
+
+### `.env` file
+
+Create a `.env` file from the provided template:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set:
+
+- `FBM_NODE_NAME` to the value of `FEDBIOMED_NODEID` in the `config.env` file that was shared with you
+- `CONTAINER_UID` and `CONTAINER_GID` to the output of `id -u` and `id -g`, respectively
+
+:::{admonition} Example `.env` file content
+:class: dropdown
+
+```{code-block}
+:emphasize-lines: 15,19,20
+#
+# docker-compose.yml variables
+# Copy to `.env` and edit as needed
+#
+
+# Fed-BioMed version of the node image
+# Must be the same version as the researcher and the VPN server
+FBM_CONTAINER_VERSION_TAG=6.4.1
+
+# Unique ID for this instance, among all the instances deployed on this machine
+# (used in container names)
+FBM_CONTAINER_INSTANCE_ID=default
+
+# Fed-BioMed node name, as shown to the researcher
+FBM_NODE_NAME=mcgill
+
+# Host user and group owning the files in `fbm-node`
+# Set to the output of `id -u` and `id -g`. If unset, files are owned by UID/GID 2101
+CONTAINER_UID=1002
+CONTAINER_GID=1001
+
+# Relative or absolute path to the Nipoppy study associated with this node
+NIPOPPY_ROOT=./nipoppy_study
+
+# Researcher address on the VPN (Fed-BioMed VPN defaults)
+#FBM_RESEARCHER_IP=10.222.0.2
+#FBM_RESEARCHER_PORT=50051
+
+# Options passed to `fedbiomed node start`, eg `--gpu`
+#FBM_NODE_START_OPTIONS=
+
+# Node security settings (Fed-BioMed defaults shown)
+FBM_SECURITY_FORCE_SECURE_AGGREGATION=True
+FBM_SECURITY_TRAINING_PLAN_APPROVAL=True
+FBM_SECURITY_ALLOW_DEFAULT_TRAINING_PLANS=False
+FBM_SECURITY_ALLOW_PREPROC=True
+FBM_SECURITY_ALLOW_FEDERATED_ANALYTICS=True
+```
+
+:::
 
 ## Data download
 
