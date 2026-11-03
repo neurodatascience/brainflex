@@ -6,12 +6,20 @@ from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
 from brainflex.cli.main import app
-from brainflex.utils.constants import BRAINFLEX_DIRNAME, INITIAL_SURVEY_FILENAME
+from brainflex.utils.constants import (
+    BRAINFLEX_DIRNAME,
+    INITIAL_SURVEY_FILENAME,
+    INITIAL_SURVEY_QUESTIONS,
+)
 
 
 @pytest.fixture
 def mock_initial_survey(mocker: MockerFixture) -> MagicMock:
     return mocker.patch("brainflex.cli.initial_survey.initial_survey")
+
+
+def _answers(*ratings: int) -> dict[str, int]:
+    return dict(zip(INITIAL_SURVEY_QUESTIONS, ratings, strict=True))
 
 
 @pytest.fixture
@@ -33,7 +41,7 @@ class TestInitialSurvey:
             assert f"How familiar are you with {tool}?" in result.stdout
         assert "Saved answers to" in result.stdout
         mock_initial_survey.assert_called_once_with(
-            dpath_root.resolve(), 1, 3, 5, overwrite=False
+            dpath_root.resolve(), _answers(1, 3, 5), overwrite=False
         )
 
     def test_invalid_input_reprompts(
@@ -46,7 +54,7 @@ class TestInitialSurvey:
         )
         assert result.exit_code == 0
         mock_initial_survey.assert_called_once_with(
-            dpath_root.resolve(), 2, 3, 4, overwrite=False
+            dpath_root.resolve(), _answers(2, 3, 4), overwrite=False
         )
 
     def test_default_path(
@@ -61,7 +69,7 @@ class TestInitialSurvey:
         result = runner.invoke(app, ["initial-survey"], input="1\n1\n1\n")
         assert result.exit_code == 0
         mock_initial_survey.assert_called_once_with(
-            dpath_root.resolve(), 1, 1, 1, overwrite=False
+            dpath_root.resolve(), _answers(1, 1, 1), overwrite=False
         )
 
     def test_exists(
@@ -94,7 +102,7 @@ class TestInitialSurvey:
         )
         assert result.exit_code == 0
         mock_initial_survey.assert_called_once_with(
-            dpath_root.resolve(), 1, 1, 1, overwrite=True
+            dpath_root.resolve(), _answers(1, 1, 1), overwrite=True
         )
 
     def test_end_to_end(self, runner: CliRunner, dpath_root: Path, fpath_survey: Path):
@@ -104,4 +112,9 @@ class TestInitialSurvey:
             input="1\n3\n5\n",
         )
         assert result.exit_code == 0
-        assert fpath_survey.read_text().splitlines()[1] == "1\t3\t5"
+        assert fpath_survey.read_text().splitlines() == [
+            "question\tanswer",
+            "How familiar are you with Nipoppy?\t1",
+            "How familiar are you with Neurobagel?\t3",
+            "How familiar are you with Fed-BioMed?\t5",
+        ]

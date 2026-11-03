@@ -9,9 +9,7 @@ from rich.prompt import Prompt
 from brainflex.cli.console import print_error
 from brainflex.cli.options import RootOption
 from brainflex.core.initial_survey import check_initial_survey_path, initial_survey
-from brainflex.utils.constants import LIKERT_CHOICES
-
-TOOLS = ("Nipoppy", "Neurobagel", "Fed-BioMed")
+from brainflex.utils.constants import INITIAL_SURVEY_QUESTIONS, LIKERT_CHOICES
 
 
 def initial_survey_cli(
@@ -30,9 +28,9 @@ def initial_survey_cli(
         raise typer.Exit(1) from e
 
     typer.echo("Rate your familiarity (1 = not at all familiar, 5 = very familiar)")
-    nipoppy, neurobagel, fedbiomed = (
-        int(Prompt.ask(f"How familiar are you with {tool}?", choices=LIKERT_CHOICES))
-        for tool in TOOLS
-    )
-    initial_survey(path, nipoppy, neurobagel, fedbiomed, overwrite=overwrite)
+    answers = {
+        question: int(Prompt.ask(question, choices=LIKERT_CHOICES))
+        for question in INITIAL_SURVEY_QUESTIONS
+    }
+    initial_survey(path, answers, overwrite=overwrite)
     typer.echo(f"Saved answers to {fpath}")

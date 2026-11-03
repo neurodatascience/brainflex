@@ -30,14 +30,13 @@ STATUS_LOG_COLUMNS = (COL_TIMESTAMP, COL_STEP, COL_STATUS, COL_NOTES)
 
 # initial-survey
 INITIAL_SURVEY_FILENAME = "initial_survey.tsv"
-COL_NIPOPPY_FAMILIARITY = "nipoppy_familiarity"
-COL_NEUROBAGEL_FAMILIARITY = "neurobagel_familiarity"
-COL_FEDBIOMED_FAMILIARITY = "fedbiomed_familiarity"
-INITIAL_SURVEY_COLUMNS = (
-    COL_NIPOPPY_FAMILIARITY,
-    COL_NEUROBAGEL_FAMILIARITY,
-    COL_FEDBIOMED_FAMILIARITY,
+INITIAL_SURVEY_QUESTIONS = tuple(
+    f"How familiar are you with {tool}?"
+    for tool in ("Nipoppy", "Neurobagel", "Fed-BioMed")
 )
+COL_QUESTION = "question"
+COL_ANSWER = "answer"
+SURVEY_COLUMNS = (COL_QUESTION, COL_ANSWER)
 LIKERT_CHOICES = ("1", "2", "3", "4", "5")
 
 # get-data

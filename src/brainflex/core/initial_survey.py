@@ -1,17 +1,18 @@
 """Survey on prior experience, answered before the experiment."""
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pandas as pd
 
 from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
-    COL_FEDBIOMED_FAMILIARITY,
-    COL_NEUROBAGEL_FAMILIARITY,
-    COL_NIPOPPY_FAMILIARITY,
-    INITIAL_SURVEY_COLUMNS,
+    COL_ANSWER,
+    COL_QUESTION,
     INITIAL_SURVEY_FILENAME,
+    INITIAL_SURVEY_QUESTIONS,
     LIKERT_CHOICES,
+    SURVEY_COLUMNS,
 )
 
 
@@ -30,30 +31,31 @@ def check_initial_survey_path(root: Path, overwrite: bool = False) -> Path:
 
 
 def initial_survey(
-    root: Path,
-    nipoppy: int,
-    neurobagel: int,
-    fedbiomed: int,
-    overwrite: bool = False,
+    root: Path, answers: Mapping[str, int], overwrite: bool = False
 ) -> None:
     """Save the answers to the initial survey.
 
-    Raises ValueError if a rating is out of range, and FileExistsError if the survey
-    file already exists and ``overwrite`` is False.
+    ``answers`` maps each question in ``INITIAL_SURVEY_QUESTIONS`` to a rating on a
+    Likert scale from 1 to 5. Raises ValueError if questions are missing or unknown,
+    or if a rating is out of range, and FileExistsError if the survey file already
+    exists and ``overwrite`` is False.
     """
-    answers = {
-        COL_NIPOPPY_FAMILIARITY: nipoppy,
-        COL_NEUROBAGEL_FAMILIARITY: neurobagel,
-        COL_FEDBIOMED_FAMILIARITY: fedbiomed,
-    }
-    for col, value in answers.items():
-        if str(value) not in LIKERT_CHOICES:
+    if set(answers) != set(INITIAL_SURVEY_QUESTIONS):
+        raise ValueError(
+            "Answers must be given for exactly these questions:"
+            f" {INITIAL_SURVEY_QUESTIONS}"
+        )
+    for question, answer in answers.items():
+        if str(answer) not in LIKERT_CHOICES:
             raise ValueError(
-                f"Invalid {col} {value!r}: must be one of {', '.join(LIKERT_CHOICES)}"
+                f"Invalid answer {answer!r} to {question!r}:"
+                f" must be one of {', '.join(LIKERT_CHOICES)}"
             )
 
     fpath = check_initial_survey_path(root, overwrite=overwrite)
 
-    pd.DataFrame([answers], columns=INITIAL_SURVEY_COLUMNS).to_csv(
-        fpath, sep="\t", index=False
-    )
+    rows = [
+        {COL_QUESTION: question, COL_ANSWER: answers[question]}
+        for question in INITIAL_SURVEY_QUESTIONS
+    ]
+    pd.DataFrame(rows, columns=SURVEY_COLUMNS).to_csv(fpath, sep="\t", index=False)
