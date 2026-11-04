@@ -10,11 +10,11 @@ COL_ANSWER = "answer"
 SURVEY_COLUMNS = (COL_QUESTION, COL_ANSWER)
 LIKERT_CHOICES = ("1", "2", "3", "4", "5")
 FAMILIARITY_LABELS = (
-    "Never heard of it before",
-    "Have heard of it but never used",
-    "Have used but only with example/toy data",
-    "Have used with real data but not regularly",
-    "Regularly use/used with non-toy data",
+    "I have never heard of it before this project",
+    "I have heard of it but never used",
+    "I have used but only with example/toy data",
+    "I have used with real data but not regularly",
+    "I use it regularly / It is one of my go-to tools",
 )
 TOOLS_EASIER_LABELS = (
     "Not at all",

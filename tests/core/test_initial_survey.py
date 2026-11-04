@@ -57,8 +57,8 @@ class TestInitialSurvey:
         ]
         assert list(df["answer"]) == [
             "1 (Never heard of it before)",
-            "3 (Have used but only with example/toy data)",
-            "5 (Regularly use/used with non-toy data)",
+            "3 (I have used but only with example/toy data)",
+            "5 (I use it regularly / It is one of my go-to tools)",
         ]
 
     def test_question_order(self, root: Path, fpath_survey: Path):
@@ -68,8 +68,8 @@ class TestInitialSurvey:
         assert list(df["question"]) == list(INITIAL_SURVEY_QUESTIONS)
         assert list(df["answer"]) == [
             "1 (Never heard of it before)",
-            "3 (Have used but only with example/toy data)",
-            "5 (Regularly use/used with non-toy data)",
+            "3 (I have used but only with example/toy data)",
+            "5 (I use it regularly / It is one of my go-to tools)",
         ]
 
     def test_exists(self, root: Path, fpath_survey: Path):
@@ -83,7 +83,7 @@ class TestInitialSurvey:
         initial_survey(root, _answers(2, 2, 2), overwrite=True)
         df = _read(fpath_survey)
         assert len(df) == len(INITIAL_SURVEY_QUESTIONS)
-        assert list(df["answer"]) == ["2 (Have heard of it but never used)"] * 3
+        assert list(df["answer"]) == ["2 (I have heard of it but never used)"] * 3
 
     @pytest.mark.parametrize("ratings", [(0, 1, 1), (1, 6, 1), (1, 1, -1)])
     def test_invalid_rating(

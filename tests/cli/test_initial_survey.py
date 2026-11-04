@@ -120,6 +120,6 @@ class TestInitialSurvey:
         assert fpath_survey.read_text().splitlines() == [
             "question\tanswer",
             "How familiar are you with Nipoppy?\t1 (Never heard of it before)",
-            "How familiar are you with Neurobagel?\t3 (Have used but only with example/toy data)",
-            "How familiar are you with Fed-BioMed?\t5 (Regularly use/used with non-toy data)",
+            "How familiar are you with Neurobagel?\t3 (I have used but only with example/toy data)",
+            "How familiar are you with Fed-BioMed?\t5 (I use it regularly / It is one of my go-to tools)",
         ]
