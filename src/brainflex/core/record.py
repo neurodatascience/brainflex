@@ -144,10 +144,11 @@ def record(
 
     dpath = root / BRAINFLEX_DIRNAME
     fpath_timestamps = dpath / TIMESTAMPS_FILENAME
+    timestamp = timestamp or datetime.now()
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.astimezone()  # naive -> interpret as local time
     row = {
-        COL_TIMESTAMP: (timestamp or datetime.now())
-        .astimezone()
-        .isoformat(timespec="seconds"),
+        COL_TIMESTAMP: timestamp.isoformat(timespec="seconds"),
         COL_STEP: str(step),
         COL_STATUS: str(status),
     }
