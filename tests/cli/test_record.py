@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -16,7 +15,6 @@ from brainflex.utils.constants import (
     QUESTION_TOOLS_EASIER,
     STEP_SURVEY_FILENAME,
     TIMESTAMPS_FILENAME,
-    TOOLS_EASIER_LABELS,
 )
 
 
@@ -75,7 +73,6 @@ class TestRecord:
         assert QUESTION_NOTES in stdout
         assert QUESTION_TOOLS_EASIER not in stdout
         assert QUESTION_TIME_WITHOUT_TOOLS not in stdout
-        assert not any(label in stdout for label in TOOLS_EASIER_LABELS)
         assert (
             f"Saved timestamp for (fedbiomed_node_part_1, end) to {FPATH_TIMESTAMPS}"
             in result.stdout
@@ -97,7 +94,7 @@ class TestRecord:
         result = runner.invoke(
             app,
             ["record", str(step), "end", "--project", str(dpath_root)],
-            input="4\n1-4h\nwent fine\n",
+            input="yes\n1-4h\nwent fine\n",
         )
         assert result.exit_code == 0
         stdout = _unwrap(result.stdout)
@@ -107,9 +104,7 @@ class TestRecord:
             < stdout.index(QUESTION_TIME_WITHOUT_TOOLS)
             < stdout.index(QUESTION_NOTES)
         )
-        # each scale point is labelled before the question
-        for i, label in enumerate(TOOLS_EASIER_LABELS, start=1):
-            assert stdout.index(f"{i} = {label}") < stdout.index(QUESTION_TOOLS_EASIER)
+        assert "[yes/no/unsure]" in stdout
         assert (
             f"Saved timestamp for ({step}, end) to {FPATH_TIMESTAMPS}" in result.stdout
         )
@@ -119,7 +114,7 @@ class TestRecord:
             step,
             Status.END,
             answers={
-                QUESTION_TOOLS_EASIER: "4",
+                QUESTION_TOOLS_EASIER: "yes",
                 QUESTION_TIME_WITHOUT_TOOLS: "1-4h",
                 QUESTION_NOTES: "went fine",
             },
@@ -131,7 +126,7 @@ class TestRecord:
         result = runner.invoke(
             app,
             ["record", "idp_extraction", "end", "--project", str(dpath_root)],
-            input="6\n5\n2 days\n>7d\n\n",
+            input="maybe\nunsure\n2 days\n>7d\n\n",
         )
         assert result.exit_code == 0
         mock_record.assert_called_once_with(
@@ -139,7 +134,7 @@ class TestRecord:
             Step.IDP_EXTRACTION,
             Status.END,
             answers={
-                QUESTION_TOOLS_EASIER: "5",
+                QUESTION_TOOLS_EASIER: "unsure",
                 QUESTION_TIME_WITHOUT_TOOLS: ">7d",
                 QUESTION_NOTES: "",
             },
@@ -195,17 +190,31 @@ class TestRecord:
         assert result.exit_code == 2
         mock_record.assert_not_called()
 
-    def test_warning(self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path):
-        def _warn(*args, **kwargs) -> tuple[Path, Path | None]:
-            warnings.warn("step idp_extraction was already started", stacklevel=2)
-            return _fake_record(*args, **kwargs)
-
-        mock_record.side_effect = _warn
-        result = runner.invoke(
-            app, ["record", "idp_extraction", "start", "--project", str(dpath_root)]
+    def test_warning_already_started(
+        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path
+    ):
+        args = ["record", "idp_extraction", "start", "--project", str(dpath_root)]
+        mock_record.side_effect = None
+        (dpath_root / BRAINFLEX_DIRNAME / TIMESTAMPS_FILENAME).write_text(
+            "timestamp\tstep\tstatus\nt0\tidp_extraction\tstart\n"
         )
+        mock_record.return_value = (FPATH_TIMESTAMPS, None)
+        result = runner.invoke(app, args)
         assert result.exit_code == 0
         assert "WARNING: step idp_extraction was already started" in result.stderr
+
+    @pytest.mark.parametrize("step", ["idp_extraction", "fedbiomed_node_part_1"])
+    def test_warning_not_started_printed_first(
+        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path, step: str
+    ):
+        result = runner.invoke(
+            app,
+            ["record", step, "end", "--project", str(dpath_root)],
+            input="yes\n1-4h\n\n",
+        )
+        assert result.exit_code == 0
+        assert result.output.startswith(f"WARNING: step {step} was not started\n")
+        mock_record.assert_called_once()
 
     def test_end_to_end(self, runner: CliRunner, dpath_root: Path):
         args = ["record", "fl_ready_data", "--project", str(dpath_root)]
@@ -220,7 +229,8 @@ class TestRecord:
             in result.stdout
         )
         assert "Saved answers" not in result.stdout
-        result = runner.invoke(app, args_end, input="3\n<1h\nok\n")
+        result = runner.invoke(app, args_end, input="yes\n<1h\nok\n")
+        assert "WARNING" not in result.stderr
         assert result.exit_code == 0
         assert (
             f"Saved timestamp for (fl_ready_data, end) to {fpath_timestamps}"
@@ -232,7 +242,7 @@ class TestRecord:
         assert list(df_timestamps["status"]) == ["start", "end"]
         assert (dpath / STEP_SURVEY_FILENAME).read_text().splitlines() == [
             "step\tquestion\tanswer",
-            f"fl_ready_data\t{QUESTION_TOOLS_EASIER}\t3 (Moderately)",
+            f"fl_ready_data\t{QUESTION_TOOLS_EASIER}\tyes",
             f"fl_ready_data\t{QUESTION_TIME_WITHOUT_TOOLS}\t<1h",
             f"fl_ready_data\t{QUESTION_NOTES}\tok",
         ]

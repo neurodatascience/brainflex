@@ -13,7 +13,6 @@ from brainflex.utils.constants import (
     COL_STATUS,
     COL_STEP,
     COL_TIMESTAMP,
-    LIKERT_CHOICES,
     QUESTION_NOTES,
     QUESTION_TIME_WITHOUT_TOOLS,
     QUESTION_TOOLS_EASIER,
@@ -22,9 +21,8 @@ from brainflex.utils.constants import (
     TIME_WITHOUT_TOOLS_CHOICES,
     TIMESTAMPS_COLUMNS,
     TIMESTAMPS_FILENAME,
-    TOOLS_EASIER_LABELS,
+    TOOLS_EASIER_CHOICES,
 )
-from brainflex.utils.likert import label_likert_answer
 from brainflex.utils.tsv import append_tsv, load_tsv
 
 
@@ -52,13 +50,35 @@ DATA_PREP_STEPS = frozenset(
 # questions asked at the end of a step, mapped to their allowed answers
 # (None for free text), in the order they are asked
 DATA_PREP_QUESTIONS: dict[str, tuple[str, ...] | None] = {
-    QUESTION_TOOLS_EASIER: LIKERT_CHOICES,
+    QUESTION_TOOLS_EASIER: TOOLS_EASIER_CHOICES,
     QUESTION_TIME_WITHOUT_TOOLS: TIME_WITHOUT_TOOLS_CHOICES,
 }
 COMMON_QUESTIONS: dict[str, tuple[str, ...] | None] = {QUESTION_NOTES: None}
 
-# labels of Likert scale questions
-SCALE_LABELS: dict[str, tuple[str, ...]] = {QUESTION_TOOLS_EASIER: TOOLS_EASIER_LABELS}
+# high-level summaries of data preparation steps
+STEP_SUMMARIES: dict[Step, str] = {
+    Step.IDP_EXTRACTION: (
+        "In this step, you used a script that wraps FreeSurfer tools to extract "
+        "imaging-derived phenotypes (IDPs) (cortical thickness, subcortical volumes, "
+        "etc.) from existing FreeSurfer subject directories and combine them into "
+        "tabular files with standardized structure and column names (shared with every "
+        "other site participating in the FL experiment)."
+    ),
+    Step.SEMANTIC_HARMONIZATION: (
+        "In this step, you created a file containing participant IDs, session IDs, and "
+        "demographic information (age, sex) that use standardized column names and "
+        "values (shared with every other site participating in the FL experiment), "
+        "despite the fact that the original demographic data may have used "
+        "different names or values."
+    ),
+    Step.FL_READY_DATA: (
+        "In this step, you merged the previously extracted FreeSurfer IDPs and "
+        "harmonized phenotypic data into datasets formatted in a way that can be used "
+        "directly by the Fed-BioMed federated learning framework. All sites "
+        "participating in the FL experiment will have datasets with the same structure "
+        "and column names, so that they can be used together to train models."
+    ),
+}
 
 
 def get_step_questions(step: Step) -> dict[str, tuple[str, ...] | None]:
@@ -66,6 +86,11 @@ def get_step_questions(step: Step) -> dict[str, tuple[str, ...] | None]:
     if step in DATA_PREP_STEPS:
         return DATA_PREP_QUESTIONS | COMMON_QUESTIONS
     return dict(COMMON_QUESTIONS)
+
+
+def get_step_summary(step: Step) -> str | None:
+    """Return a high-level summary of a data preparation step (None otherwise)."""
+    return STEP_SUMMARIES.get(step)
 
 
 def _check_answers(
@@ -88,11 +113,17 @@ def _check_answers(
     return questions
 
 
-def _format_answer(question: str, answer: str) -> str:
-    """Add the label to the answer of a Likert scale question."""
-    if question in SCALE_LABELS:
-        return label_likert_answer(answer, SCALE_LABELS[question])
-    return answer
+def check_status(root: Path, step: Step, status: Status) -> None:
+    """Warn if a step is started twice or ended without being started."""
+    df_timestamps = load_tsv(
+        root / BRAINFLEX_DIRNAME / TIMESTAMPS_FILENAME, TIMESTAMPS_COLUMNS
+    )
+    statuses = df_timestamps.query(f"{COL_STEP} == @step")[COL_STATUS]
+    last_status = statuses.iloc[-1] if not statuses.empty else None
+    if status == Status.START and last_status == Status.START:
+        warnings.warn(f"step {step} was already started", stacklevel=2)
+    elif status == Status.END and last_status != Status.START:
+        warnings.warn(f"step {step} was not started", stacklevel=2)
 
 
 def record(
@@ -103,28 +134,21 @@ def record(
 ) -> tuple[Path, Path | None]:
     """Record the start or end of a step + some survey answers.
 
-    Returns the paths to the timestamps file and to the survey file (if applicable).
+    Call ``check_status`` first to warn about steps started twice or ended without
+    being started. Returns the paths to the timestamps file and to the survey file
+    (if applicable).
     """
     answers = answers or {}
     questions = _check_answers(step, status, answers)
 
     dpath = root / BRAINFLEX_DIRNAME
     fpath_timestamps = dpath / TIMESTAMPS_FILENAME
-    df_timestamps = load_tsv(fpath_timestamps, TIMESTAMPS_COLUMNS)
-
-    statuses = df_timestamps.query(f"{COL_STEP} == @step")[COL_STATUS]
-    last_status = statuses.iloc[-1] if not statuses.empty else None
-    if status == Status.START and last_status == Status.START:
-        warnings.warn(f"step {step} was already started", stacklevel=2)
-    elif status == Status.END and last_status != Status.START:
-        warnings.warn(f"step {step} was not started", stacklevel=2)
-
     row = {
         COL_TIMESTAMP: datetime.now().astimezone().isoformat(timespec="seconds"),
         COL_STEP: str(step),
         COL_STATUS: str(status),
     }
-    append_tsv(fpath_timestamps, TIMESTAMPS_COLUMNS, [row], df=df_timestamps)
+    append_tsv(fpath_timestamps, TIMESTAMPS_COLUMNS, [row])
 
     if not questions:
         return fpath_timestamps, None
@@ -137,7 +161,7 @@ def record(
             {
                 COL_STEP: str(step),
                 COL_QUESTION: q,
-                COL_ANSWER: _format_answer(q, answers[q]),
+                COL_ANSWER: answers[q],
             }
             for q in questions
         ),

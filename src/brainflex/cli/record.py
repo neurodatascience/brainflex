@@ -6,13 +6,13 @@ from typing import Annotated
 import typer
 from rich.prompt import Prompt
 
-from brainflex.cli.console import format_scale
 from brainflex.cli.options import RootOption
 from brainflex.core.record import (
-    SCALE_LABELS,
     Status,
     Step,
+    check_status,
     get_step_questions,
+    get_step_summary,
     record,
 )
 
@@ -23,8 +23,13 @@ def record_cli(
     path: RootOption = Path(),
 ) -> None:
     """Record the start or end of an experiment step."""
+    # warn before asking questions
+    check_status(path, step, status)
+
     answers = {}
     if status == Status.END:
+        if (summary := get_step_summary(step)) is not None:
+            typer.echo(f"{summary}\n")
         for question, choices in get_step_questions(step).items():
             if choices is None:
                 answers[question] = Prompt.ask(
@@ -33,8 +38,6 @@ def record_cli(
                     show_default=False,
                 )
             else:
-                if question in SCALE_LABELS:
-                    typer.echo(format_scale(SCALE_LABELS[question]))
                 answers[question] = Prompt.ask(question, choices=list(choices))
     fpath_timestamps, fpath_survey = record(path, step, status, answers=answers)
     typer.echo(f"Saved timestamp for ({step}, {status}) to {fpath_timestamps}")

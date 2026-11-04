@@ -9,6 +9,7 @@ from brainflex.core.record import (
     DATA_PREP_STEPS,
     Status,
     Step,
+    check_status,
     get_step_questions,
     record,
 )
@@ -24,7 +25,7 @@ from brainflex.utils.constants import (
 )
 
 DATA_PREP_ANSWERS = {
-    QUESTION_TOOLS_EASIER: "4",
+    QUESTION_TOOLS_EASIER: "yes",
     QUESTION_TIME_WITHOUT_TOOLS: "1-4h",
     QUESTION_NOTES: "went fine",
 }
@@ -94,7 +95,7 @@ class TestRecord:
             {
                 "step": "idp_extraction",
                 "question": QUESTION_TOOLS_EASIER,
-                "answer": "4 (Considerably)",
+                "answer": "yes",
             },
             {
                 "step": "idp_extraction",
@@ -171,8 +172,8 @@ class TestRecord:
     @pytest.mark.parametrize(
         ("question", "answer"),
         [
-            (QUESTION_TOOLS_EASIER, "0"),
-            (QUESTION_TOOLS_EASIER, "6"),
+            (QUESTION_TOOLS_EASIER, "maybe"),
+            (QUESTION_TOOLS_EASIER, "4"),
             (QUESTION_TIME_WITHOUT_TOOLS, "2 days"),
         ],
     )
@@ -189,22 +190,52 @@ class TestRecord:
         assert not fpath_timestamps.exists()
 
     def test_no_warning(self, root: Path):
+        # warnings are emitted by check_status
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
             record(
                 root,
                 Step.FEDBIOMED_NODE_PART_1,
                 Status.END,
                 answers={QUESTION_NOTES: ""},
             )
+            record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
+            record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
+
+    def test_invalid_timestamps_file(self, root: Path, fpath_timestamps: Path):
+        fpath_timestamps.write_text("timestamp\tstep\nt0\tidp_extraction\n")
+        with pytest.warns(UserWarning, match="invalid file"):
+            record(root, Step.IDP_EXTRACTION, Status.START)
+        assert len(list(fpath_timestamps.parent.glob("timestamps-*.tsv"))) == 1
+        assert len(_read(fpath_timestamps)) == 1
+
+
+class TestCheckStatus:
+    def _record(self, root: Path, step: Step, status: Status) -> None:
+        answers = {QUESTION_NOTES: ""} if status == Status.END else None
+        record(root, step, status, answers=answers)
 
     @pytest.mark.parametrize(
-        ("statuses", "message"),
+        ("statuses", "status"),
         [
-            ([Status.END], "was not started"),
-            ([Status.START, Status.START], "was already started"),
-            ([Status.START, Status.END, Status.END], "was not started"),
+            ([], Status.START),
+            ([Status.START], Status.END),
+            ([Status.START, Status.END], Status.START),
+        ],
+    )
+    def test_no_warning(self, root: Path, statuses: list[Status], status: Status):
+        for previous in statuses:
+            self._record(root, Step.FEDBIOMED_NODE_PART_1, previous)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            check_status(root, Step.FEDBIOMED_NODE_PART_1, status)
+
+    @pytest.mark.parametrize(
+        ("statuses", "status", "message"),
+        [
+            ([], Status.END, "was not started"),
+            ([Status.START], Status.START, "was already started"),
+            ([Status.START, Status.END], Status.END, "was not started"),
         ],
     )
     def test_warning(
@@ -212,25 +243,29 @@ class TestRecord:
         root: Path,
         fpath_timestamps: Path,
         statuses: list[Status],
+        status: Status,
         message: str,
     ):
-        step = Step.FEDBIOMED_NODE_PART_1
-
-        def _record(status: Status) -> None:
-            answers = {QUESTION_NOTES: ""} if status == Status.END else None
-            record(root, step, status, answers=answers)
-
-        for status in statuses[:-1]:
-            _record(status)
+        for previous in statuses:
+            self._record(root, Step.FEDBIOMED_NODE_PART_1, previous)
+        content = fpath_timestamps.read_text() if statuses else None
         with pytest.warns(UserWarning, match=message):
-            _record(statuses[-1])
-        assert len(_read(fpath_timestamps)) == len(statuses)
+            check_status(root, Step.FEDBIOMED_NODE_PART_1, status)
+        # nothing is written
+        if content is None:
+            assert not fpath_timestamps.exists()
+        else:
+            assert fpath_timestamps.read_text() == content
+
+    def test_other_step(self, root: Path):
+        self._record(root, Step.IDP_EXTRACTION, Status.START)
+        with pytest.warns(UserWarning, match="fl_ready_data was not started"):
+            check_status(root, Step.FL_READY_DATA, Status.END)
 
     def test_invalid_timestamps_file(self, root: Path, fpath_timestamps: Path):
         fpath_timestamps.write_text("timestamp\tstep\nt0\tidp_extraction\n")
-        with pytest.warns(UserWarning, match="invalid file") as record_warnings:
-            record(root, Step.IDP_EXTRACTION, Status.START)
-        assert len(list(fpath_timestamps.parent.glob("timestamps-*.tsv"))) == 1
-        assert len(_read(fpath_timestamps)) == 1
+        with pytest.warns(UserWarning) as record_warnings:
+            check_status(root, Step.IDP_EXTRACTION, Status.START)
         # previous records are discarded, so no start/end warning
+        assert str(record_warnings[0].message).startswith("invalid file")
         assert len(record_warnings) == 1

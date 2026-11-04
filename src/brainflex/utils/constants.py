@@ -16,13 +16,6 @@ FAMILIARITY_LABELS = (
     "I have used with real data but not regularly",
     "I use it regularly / It is one of my go-to tools",
 )
-TOOLS_EASIER_LABELS = (
-    "Not at all",
-    "Slightly",
-    "Moderately",
-    "Considerably",
-    "Greatly",
-)
 BACKUP_TIMESTAMP_FORMAT = "%Y%m%dT%H%M%S"
 
 # initial-survey
@@ -41,8 +34,9 @@ TIMESTAMPS_COLUMNS = (COL_TIMESTAMP, COL_STEP, COL_STATUS)
 STEP_SURVEY_FILENAME = "step_survey.tsv"
 STEP_SURVEY_COLUMNS = (COL_STEP, *SURVEY_COLUMNS)
 QUESTION_TOOLS_EASIER = (
-    "By how much did the Nipoppy/Neurobagel tools make things easier?"
+    "Did the Nipoppy/Neurobagel tools make things easier to do this step?"
 )
+TOOLS_EASIER_CHOICES = ("yes", "no", "unsure")
 QUESTION_TIME_WITHOUT_TOOLS = (
     "How long do you think this would have taken without the Nipoppy/Neurobagel tools?"
 )
