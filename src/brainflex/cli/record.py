@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich import get_console
 from rich.prompt import Prompt
+from rich.text import Text
 
 from brainflex.cli.options import RootOption
 from brainflex.core.record import (
@@ -29,7 +31,8 @@ def record_cli(
     answers = {}
     if status == Status.END:
         if (summary := get_step_summary(step)) is not None:
-            typer.echo(f"{summary}\n")
+            # same console and colour as Prompt choices
+            get_console().print(Text(summary, style="prompt.choices"), end="\n\n")
         for question, choices in get_step_questions(step).items():
             if choices is None:
                 answers[question] = Prompt.ask(
