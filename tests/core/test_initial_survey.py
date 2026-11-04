@@ -56,7 +56,7 @@ class TestInitialSurvey:
             "How familiar are you with Fed-BioMed?",
         ]
         assert list(df["answer"]) == [
-            "1 (Never heard of it before)",
+            "1 (I have never heard of it before this project)",
             "3 (I have used but only with example/toy data)",
             "5 (I use it regularly / It is one of my go-to tools)",
         ]
@@ -67,7 +67,7 @@ class TestInitialSurvey:
         df = _read(fpath_survey)
         assert list(df["question"]) == list(INITIAL_SURVEY_QUESTIONS)
         assert list(df["answer"]) == [
-            "1 (Never heard of it before)",
+            "1 (I have never heard of it before this project)",
             "3 (I have used but only with example/toy data)",
             "5 (I use it regularly / It is one of my go-to tools)",
         ]
