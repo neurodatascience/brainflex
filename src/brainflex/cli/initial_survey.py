@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich import get_console
 from rich.prompt import Prompt
 
 from brainflex.cli.console import format_scale, print_error
@@ -32,7 +33,8 @@ def initial_survey_cli(
         raise typer.Exit(1) from e
 
     typer.echo("Rate your familiarity with each tool:")
-    typer.echo(format_scale(FAMILIARITY_LABELS))
+    # same console as Prompt
+    get_console().print(format_scale(FAMILIARITY_LABELS), soft_wrap=True)
     answers = {
         question: int(Prompt.ask(question, choices=LIKERT_CHOICES))
         for question in INITIAL_SURVEY_QUESTIONS

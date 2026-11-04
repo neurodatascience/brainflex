@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 from rich.console import Console
 from rich.markup import escape
+from rich.text import Text
 
 from brainflex.utils.constants import LIKERT_CHOICES
 
@@ -17,13 +18,13 @@ def print_error(message: object) -> None:
     console.print(f"[red]ERROR:[/red] {escape(str(message))}", soft_wrap=True)
 
 
-def format_scale(labels: Sequence[str]) -> str:
+def format_scale(labels: Sequence[str]) -> Text:
     """Format a Likert scale legend with one line per choice.
 
     Raises ValueError if there is not exactly one label per choice.
     """
-    return "\n".join(
-        f"  {choice} = {label}"
+    return Text("\n").join(
+        Text.assemble("  ", (choice, "prompt.choices"), f" = {label}")
         for choice, label in zip(LIKERT_CHOICES, labels, strict=True)
     )
 
