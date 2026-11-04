@@ -26,7 +26,7 @@ def _raw_objects(subject_dirs: list[str]) -> dict[tuple[str, str], bytes]:
         (OPENNEURO_BUCKET, f"{DATASET_ID}/dataset_description.json"): b"{}",
         (OPENNEURO_BUCKET, f"{DATASET_ID}/participants.json"): b'{"age": {}}',
         (OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv"): (
-            b"participant_id\tage\nsub-01\t20\nsub-02\t30\nsub-03\t40\n"
+            b"participant_id\tage\nsub-01\t20\nsub-02\t30\n"
         ),
         (OPENNEURO_BUCKET, f"{DATASET_ID}/derivatives/file.txt"): b"skipped",
         (OPENNEURO_BUCKET, f"{DATASET_ID}/sub-01/"): b"",
@@ -95,8 +95,7 @@ def root(tmp_path: Path) -> Path:
     return tmp_path
 
 
-# the mock dataset has a participant without BIDS data
-@pytest.mark.filterwarnings("ignore:participants in participants.tsv without BIDS data")
+@pytest.mark.filterwarnings("error")
 class TestGetData:
     def test_get_data(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
         dpath_study = get_data(root, DATASET_ID)
@@ -122,12 +121,10 @@ class TestGetData:
         assert not (dpath_output / "sub-01/mri").exists()
 
         pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
-        # sub-03 has no imaging data
         assert pheno == (
             "participant_id\tsession_id\tage\n"
             "sub-01\tses-unnamed\t20\n"
             "sub-02\tses-unnamed\t30\n"
-            "sub-03\t\t40\n"
         )
         pheno_json = (dpath_study / "tabular" / "pheno.json").read_text()
         assert pheno_json == '{"age": {}}'
@@ -162,8 +159,32 @@ class TestGetData:
         mock_s3: dict[tuple[str, str], bytes],
         root: Path,
     ):
-        with pytest.warns(UserWarning, match=r"without BIDS data: \['sub-03'\]"):
-            get_data(root, DATASET_ID)
+        mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
+            b"participant_id\tage\nsub-01\t20\nsub-02\t30\nsub-03\t40\n"
+        )
+        with pytest.warns(
+            UserWarning,
+            match=r"without BIDS data: \['sub-03'\]. Excluding them from pheno.tsv\.",
+        ):
+            dpath_study = get_data(root, DATASET_ID)
+        pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
+        assert "sub-03" not in pheno
+
+    def test_participants_empty_id(
+        self,
+        mock_s3: dict[tuple[str, str], bytes],
+        root: Path,
+    ):
+        mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
+            b"participant_id\tage\nsub-01\t20\nsub-02\t30\n\t\n \t\n\t\n"
+        )
+        dpath_study = get_data(root, DATASET_ID)
+        pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
+        assert pheno == (
+            "participant_id\tsession_id\tage\n"
+            "sub-01\tses-unnamed\t20\n"
+            "sub-02\tses-unnamed\t30\n"
+        )
 
     def test_bids_without_participants(
         self,
@@ -249,7 +270,6 @@ class TestGetData:
         pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
         assert "sub-01\tses-01\t" in pheno
         assert "sub-02\tses-02\t" in pheno
-        assert "sub-03\t\t" in pheno
 
     def test_multiple_sessions(self, mock_s3: dict[tuple[str, str], bytes], root: Path):
         mock_s3.clear()

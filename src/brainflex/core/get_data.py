@@ -181,9 +181,9 @@ def _get_freesurfer(
 def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
     """Copy participants.tsv to the tabular directory, with a session ID column.
 
-    Participants without BIDS imaging data get an empty session ID. Warns if
-    participant IDs and BIDS subjects do not fully match, and raises ValueError
-    if none match.
+    Rows with an empty participant ID and participants without BIDS imaging
+    data are excluded. Warns if participant IDs and BIDS subjects do not fully match,
+    and raises ValueError if none match.
 
     Also copies participants.json, if available.
     """
@@ -194,7 +194,7 @@ def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
     with fpath_participants.open(newline="") as file:
         reader = csv.DictReader(file, delimiter="\t")
         fieldnames = reader.fieldnames
-        rows = list(reader)
+        rows = [row for row in reader if (row[COL_PARTICIPANT_ID] or "").strip()]
 
     fieldnames = [COL_PARTICIPANT_ID, COL_SESSION_ID] + [
         col for col in fieldnames if col not in (COL_PARTICIPANT_ID, COL_SESSION_ID)
@@ -207,7 +207,8 @@ def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
         )
     if missing := sorted(participant_ids - session_ids.keys()):
         warnings.warn(
-            f"participants in {PARTICIPANTS_FILENAME} without BIDS data: {missing}",
+            f"Found participants in {PARTICIPANTS_FILENAME} without BIDS data: "
+            f"{missing}. Excluding them from {PHENO_FILENAME}.",
             stacklevel=3,
         )
     if missing := sorted(session_ids.keys() - participant_ids):
@@ -216,8 +217,9 @@ def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
             stacklevel=3,
         )
 
+    rows = [row for row in rows if row[COL_PARTICIPANT_ID] in session_ids]
     for row in rows:
-        row[COL_SESSION_ID] = session_ids.get(row[COL_PARTICIPANT_ID], "")
+        row[COL_SESSION_ID] = session_ids[row[COL_PARTICIPANT_ID]]
 
     layout.dpath_tabular.mkdir(parents=True, exist_ok=True)
     with (layout.dpath_tabular / PHENO_FILENAME).open("w", newline="") as file:
