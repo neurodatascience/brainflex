@@ -1,5 +1,6 @@
 """CLI for ``brainflex record``."""
 
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -25,6 +26,8 @@ def record_cli(
     path: RootOption = Path(),
 ) -> None:
     """Record the start or end of an experiment step."""
+    timestamp = datetime.now().astimezone()
+
     # warn before asking questions
     check_status(path, step, status)
 
@@ -42,7 +45,9 @@ def record_cli(
                 )
             else:
                 answers[question] = Prompt.ask(question, choices=list(choices))
-    fpath_timestamps, fpath_survey = record(path, step, status, answers=answers)
+    fpath_timestamps, fpath_survey = record(
+        path, step, status, answers=answers, timestamp=timestamp
+    )
     typer.echo(f"Saved timestamp for ({step}, {status}) to {fpath_timestamps}")
     if fpath_survey is not None:
         typer.echo(f"Saved answers to {fpath_survey}")

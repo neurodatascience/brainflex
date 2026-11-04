@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pandas as pd
 import pytest
@@ -49,7 +49,11 @@ class TestRecord:
         )
         assert "Saved answers" not in result.stdout
         mock_record.assert_called_once_with(
-            dpath_root.resolve(), Step.IDP_EXTRACTION, Status.START, answers={}
+            dpath_root.resolve(),
+            Step.IDP_EXTRACTION,
+            Status.START,
+            answers={},
+            timestamp=ANY,
         )
 
     @pytest.mark.parametrize(
@@ -83,6 +87,7 @@ class TestRecord:
             Step.FEDBIOMED_NODE_PART_1,
             Status.END,
             answers={QUESTION_NOTES: notes},
+            timestamp=ANY,
         )
 
     @pytest.mark.parametrize(
@@ -118,6 +123,7 @@ class TestRecord:
                 QUESTION_TIME_WITHOUT_TOOLS: "1-4h",
                 QUESTION_NOTES: "went fine",
             },
+            timestamp=ANY,
         )
 
     def test_end_data_prep_invalid_input_reprompts(
@@ -138,6 +144,31 @@ class TestRecord:
                 QUESTION_TIME_WITHOUT_TOOLS: ">7d",
                 QUESTION_NOTES: "",
             },
+            timestamp=ANY,
+        )
+
+    def test_timestamp_before_prompts(
+        self,
+        runner: CliRunner,
+        mock_record: MagicMock,
+        dpath_root: Path,
+        mocker: MockerFixture,
+    ):
+        manager = MagicMock()
+        mock_datetime = mocker.patch("brainflex.cli.record.datetime")
+        mock_ask = mocker.patch("brainflex.cli.record.Prompt.ask", return_value="")
+        manager.attach_mock(mock_datetime.now, "now")
+        manager.attach_mock(mock_ask, "ask")
+        result = runner.invoke(
+            app,
+            ["record", "fedbiomed_node_part_1", "end", "--project", str(dpath_root)],
+        )
+        assert result.exit_code == 0
+        names = [name for name, *_ in manager.mock_calls]
+        assert names.index("now") < names.index("ask")
+        assert (
+            mock_record.call_args.kwargs["timestamp"]
+            is mock_datetime.now.return_value.astimezone.return_value
         )
 
     def test_default_path(
@@ -151,7 +182,11 @@ class TestRecord:
         result = runner.invoke(app, ["record", "idp_extraction", "start"])
         assert result.exit_code == 0
         mock_record.assert_called_once_with(
-            dpath_root.resolve(), Step.IDP_EXTRACTION, Status.START, answers={}
+            dpath_root.resolve(),
+            Step.IDP_EXTRACTION,
+            Status.START,
+            answers={},
+            timestamp=ANY,
         )
 
     @pytest.mark.parametrize("explicit", [True, False])
@@ -176,7 +211,11 @@ class TestRecord:
         )
         assert result.exit_code == 0
         mock_record.assert_called_once_with(
-            dpath_root.resolve(), Step.IDP_EXTRACTION, Status.START, answers={}
+            dpath_root.resolve(),
+            Step.IDP_EXTRACTION,
+            Status.START,
+            answers={},
+            timestamp=ANY,
         )
 
     @pytest.mark.parametrize(

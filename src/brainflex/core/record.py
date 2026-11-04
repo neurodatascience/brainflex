@@ -131,6 +131,7 @@ def record(
     step: Step,
     status: Status,
     answers: Mapping[str, str] | None = None,
+    timestamp: datetime | None = None,
 ) -> tuple[Path, Path | None]:
     """Record the start or end of a step + some survey answers.
 
@@ -144,7 +145,9 @@ def record(
     dpath = root / BRAINFLEX_DIRNAME
     fpath_timestamps = dpath / TIMESTAMPS_FILENAME
     row = {
-        COL_TIMESTAMP: datetime.now().astimezone().isoformat(timespec="seconds"),
+        COL_TIMESTAMP: (timestamp or datetime.now())
+        .astimezone()
+        .isoformat(timespec="seconds"),
         COL_STEP: str(step),
         COL_STATUS: str(status),
     }

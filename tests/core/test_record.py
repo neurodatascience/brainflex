@@ -1,5 +1,5 @@
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -79,6 +79,13 @@ class TestRecord:
         assert row["status"] == "start"
         assert datetime.fromisoformat(row["timestamp"]).tzinfo is not None
         assert not fpath_survey.exists()
+
+    def test_timestamp(self, root: Path, fpath_timestamps: Path):
+        timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone(timedelta(hours=-5)))
+        record(root, Step.IDP_EXTRACTION, Status.START, timestamp=timestamp)
+        assert _read(fpath_timestamps)["timestamp"].iloc[0] == (
+            "2026-01-02T03:04:05-05:00"
+        )
 
     def test_end_data_prep(
         self, root: Path, fpath_timestamps: Path, fpath_survey: Path
