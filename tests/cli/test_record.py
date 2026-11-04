@@ -16,6 +16,7 @@ from brainflex.utils.constants import (
     QUESTION_TOOLS_EASIER,
     STEP_SURVEY_FILENAME,
     TIMESTAMPS_FILENAME,
+    TOOLS_EASIER_LABELS,
 )
 
 
@@ -74,6 +75,7 @@ class TestRecord:
         assert QUESTION_NOTES in stdout
         assert QUESTION_TOOLS_EASIER not in stdout
         assert QUESTION_TIME_WITHOUT_TOOLS not in stdout
+        assert not any(label in stdout for label in TOOLS_EASIER_LABELS)
         assert (
             f"Saved timestamp for (fedbiomed_node_part_1, end) to {FPATH_TIMESTAMPS}"
             in result.stdout
@@ -105,6 +107,9 @@ class TestRecord:
             < stdout.index(QUESTION_TIME_WITHOUT_TOOLS)
             < stdout.index(QUESTION_NOTES)
         )
+        # each scale point is labelled before the question
+        for i, label in enumerate(TOOLS_EASIER_LABELS, start=1):
+            assert stdout.index(f"{i} = {label}") < stdout.index(QUESTION_TOOLS_EASIER)
         assert (
             f"Saved timestamp for ({step}, end) to {FPATH_TIMESTAMPS}" in result.stdout
         )
@@ -227,7 +232,7 @@ class TestRecord:
         assert list(df_timestamps["status"]) == ["start", "end"]
         assert (dpath / STEP_SURVEY_FILENAME).read_text().splitlines() == [
             "step\tquestion\tanswer",
-            f"fl_ready_data\t{QUESTION_TOOLS_EASIER}\t3",
+            f"fl_ready_data\t{QUESTION_TOOLS_EASIER}\t3 (Moderately)",
             f"fl_ready_data\t{QUESTION_TIME_WITHOUT_TOOLS}\t<1h",
             f"fl_ready_data\t{QUESTION_NOTES}\tok",
         ]

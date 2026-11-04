@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from brainflex.cli.main import app
 from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
+    FAMILIARITY_LABELS,
     INITIAL_SURVEY_FILENAME,
     INITIAL_SURVEY_QUESTIONS,
 )
@@ -39,6 +40,10 @@ class TestInitialSurvey:
         assert result.exit_code == 0
         for tool in ("Nipoppy", "Neurobagel", "Fed-BioMed"):
             assert f"How familiar are you with {tool}?" in result.stdout
+        # legend is printed once, before the questions
+        for i, label in enumerate(FAMILIARITY_LABELS, start=1):
+            assert result.stdout.count(f"{i} = {label}") == 1
+            assert result.stdout.index(label) < result.stdout.index("How familiar")
         assert "Saved answers to" in result.stdout
         mock_initial_survey.assert_called_once_with(
             dpath_root.resolve(), _answers(1, 3, 5), overwrite=False
@@ -114,7 +119,7 @@ class TestInitialSurvey:
         assert result.exit_code == 0
         assert fpath_survey.read_text().splitlines() == [
             "question\tanswer",
-            "How familiar are you with Nipoppy?\t1",
-            "How familiar are you with Neurobagel?\t3",
-            "How familiar are you with Fed-BioMed?\t5",
+            "How familiar are you with Nipoppy?\t1 (Never heard of it before)",
+            "How familiar are you with Neurobagel?\t3 (Have used but only with example/toy data)",
+            "How familiar are you with Fed-BioMed?\t5 (Regularly use/used with non-toy data)",
         ]

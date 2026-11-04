@@ -6,10 +6,14 @@ from typing import Annotated
 import typer
 from rich.prompt import Prompt
 
-from brainflex.cli.console import print_error
+from brainflex.cli.console import format_scale, print_error
 from brainflex.cli.options import RootOption
 from brainflex.core.initial_survey import check_initial_survey_path, initial_survey
-from brainflex.utils.constants import INITIAL_SURVEY_QUESTIONS, LIKERT_CHOICES
+from brainflex.utils.constants import (
+    FAMILIARITY_LABELS,
+    INITIAL_SURVEY_QUESTIONS,
+    LIKERT_CHOICES,
+)
 
 
 def initial_survey_cli(
@@ -27,7 +31,8 @@ def initial_survey_cli(
         print_error(e)
         raise typer.Exit(1) from e
 
-    typer.echo("Rate your familiarity (1 = not at all familiar, 5 = very familiar)")
+    typer.echo("Rate your familiarity with each tool:")
+    typer.echo(format_scale(FAMILIARITY_LABELS))
     answers = {
         question: int(Prompt.ask(question, choices=LIKERT_CHOICES))
         for question in INITIAL_SURVEY_QUESTIONS

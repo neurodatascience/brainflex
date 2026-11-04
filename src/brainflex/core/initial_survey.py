@@ -9,11 +9,13 @@ from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
     COL_ANSWER,
     COL_QUESTION,
+    FAMILIARITY_LABELS,
     INITIAL_SURVEY_FILENAME,
     INITIAL_SURVEY_QUESTIONS,
     LIKERT_CHOICES,
     SURVEY_COLUMNS,
 )
+from brainflex.utils.likert import label_likert_answer
 
 
 def check_initial_survey_path(root: Path, overwrite: bool = False) -> Path:
@@ -55,7 +57,10 @@ def initial_survey(
     fpath = check_initial_survey_path(root, overwrite=overwrite)
 
     rows = [
-        {COL_QUESTION: question, COL_ANSWER: answers[question]}
+        {
+            COL_QUESTION: question,
+            COL_ANSWER: label_likert_answer(answers[question], FAMILIARITY_LABELS),
+        }
         for question in INITIAL_SURVEY_QUESTIONS
     ]
     pd.DataFrame(rows, columns=SURVEY_COLUMNS).to_csv(fpath, sep="\t", index=False)

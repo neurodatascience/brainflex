@@ -6,11 +6,15 @@ from typing import Annotated
 import typer
 from rich.prompt import Prompt
 
+from brainflex.cli.console import format_scale
 from brainflex.cli.options import RootOption
-from brainflex.core.record import Status, Step, get_step_questions, record
-from brainflex.utils.constants import QUESTION_TOOLS_EASIER
-
-HINTS = {QUESTION_TOOLS_EASIER: "1 = not at all, 5 = a lot"}
+from brainflex.core.record import (
+    SCALE_LABELS,
+    Status,
+    Step,
+    get_step_questions,
+    record,
+)
 
 
 def record_cli(
@@ -29,10 +33,9 @@ def record_cli(
                     show_default=False,
                 )
             else:
-                hint = f" ({HINTS[question]})" if question in HINTS else ""
-                answers[question] = Prompt.ask(
-                    f"{question}{hint}", choices=list(choices)
-                )
+                if question in SCALE_LABELS:
+                    typer.echo(format_scale(SCALE_LABELS[question]))
+                answers[question] = Prompt.ask(question, choices=list(choices))
     fpath_timestamps, fpath_survey = record(path, step, status, answers=answers)
     typer.echo(f"Saved timestamp for ({step}, {status}) to {fpath_timestamps}")
     if fpath_survey is not None:

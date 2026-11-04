@@ -91,8 +91,21 @@ class TestRecord:
         df = _read(fpath_survey)
         assert tuple(df.columns) == STEP_SURVEY_COLUMNS
         assert df.to_dict("records") == [
-            {"step": "idp_extraction", "question": q, "answer": a}
-            for q, a in DATA_PREP_ANSWERS.items()
+            {
+                "step": "idp_extraction",
+                "question": QUESTION_TOOLS_EASIER,
+                "answer": "4 (Considerably)",
+            },
+            {
+                "step": "idp_extraction",
+                "question": QUESTION_TIME_WITHOUT_TOOLS,
+                "answer": "1-4h",
+            },
+            {
+                "step": "idp_extraction",
+                "question": QUESTION_NOTES,
+                "answer": "went fine",
+            },
         ]
 
     def test_end_other(self, root: Path, fpath_timestamps: Path, fpath_survey: Path):

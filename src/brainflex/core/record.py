@@ -22,7 +22,9 @@ from brainflex.utils.constants import (
     TIME_WITHOUT_TOOLS_CHOICES,
     TIMESTAMPS_COLUMNS,
     TIMESTAMPS_FILENAME,
+    TOOLS_EASIER_LABELS,
 )
+from brainflex.utils.likert import label_likert_answer
 from brainflex.utils.tsv import append_tsv, load_tsv
 
 
@@ -55,6 +57,9 @@ DATA_PREP_QUESTIONS: dict[str, tuple[str, ...] | None] = {
 }
 COMMON_QUESTIONS: dict[str, tuple[str, ...] | None] = {QUESTION_NOTES: None}
 
+# labels of Likert scale questions
+SCALE_LABELS: dict[str, tuple[str, ...]] = {QUESTION_TOOLS_EASIER: TOOLS_EASIER_LABELS}
+
 
 def get_step_questions(step: Step) -> dict[str, tuple[str, ...] | None]:
     """Return the questions asked at the end of a step, mapped to allowed answers."""
@@ -81,6 +86,13 @@ def _check_answers(
                 f" must be one of {', '.join(choices)}"
             )
     return questions
+
+
+def _format_answer(question: str, answer: str) -> str:
+    """Add the label to the answer of a Likert scale question."""
+    if question in SCALE_LABELS:
+        return label_likert_answer(answer, SCALE_LABELS[question])
+    return answer
 
 
 def record(
@@ -122,7 +134,11 @@ def record(
         fpath_survey,
         STEP_SURVEY_COLUMNS,
         (
-            {COL_STEP: str(step), COL_QUESTION: q, COL_ANSWER: answers[q]}
+            {
+                COL_STEP: str(step),
+                COL_QUESTION: q,
+                COL_ANSWER: _format_answer(q, answers[q]),
+            }
             for q in questions
         ),
     )

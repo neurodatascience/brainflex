@@ -9,6 +9,20 @@ COL_QUESTION = "question"
 COL_ANSWER = "answer"
 SURVEY_COLUMNS = (COL_QUESTION, COL_ANSWER)
 LIKERT_CHOICES = ("1", "2", "3", "4", "5")
+FAMILIARITY_LABELS = (
+    "Never heard of it before",
+    "Have heard of it but never used",
+    "Have used but only with example/toy data",
+    "Have used with real data but not regularly",
+    "Regularly use/used with non-toy data",
+)
+TOOLS_EASIER_LABELS = (
+    "Not at all",
+    "Slightly",
+    "Moderately",
+    "Considerably",
+    "Greatly",
+)
 BACKUP_TIMESTAMP_FORMAT = "%Y%m%dT%H%M%S"
 
 # initial-survey
