@@ -58,11 +58,11 @@ COMMON_QUESTIONS: dict[str, tuple[str, ...] | None] = {QUESTION_NOTES: None}
 # high-level summaries of data preparation steps
 STEP_SUMMARIES: dict[Step, str] = {
     Step.IDP_EXTRACTION: (
-        "In this step, you used a script that wraps FreeSurfer tools to extract "
+        "In this step, you used a script that wraps FreeSurfer tools to:\n- extract "
         "imaging-derived phenotypes (IDPs) (cortical thickness, subcortical volumes, "
-        "etc.) from existing FreeSurfer subject directories and combine them into "
+        "etc.) from existing FreeSurfer subject directories\n- combine them into "
         "tabular files with standardized structure and column names (shared with every "
-        "other site participating in the FL experiment)."
+        "other site participating in the FL experiment)"
     ),
     Step.SEMANTIC_HARMONIZATION: (
         "In this step, you created a file containing participant IDs, session IDs, and "
