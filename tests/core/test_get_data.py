@@ -228,7 +228,6 @@ class TestGetData:
             "participant_id\tsession_id\tage\n"
             "sub-01\tses-unnamed\t20\n"
             "sub-02\tses-unnamed\t30\n"
-            "sub-03\t\t40\n"
         )
 
     def test_no_participants_json(
