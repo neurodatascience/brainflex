@@ -33,12 +33,10 @@ COL_STATUS = "status"
 TIMESTAMPS_COLUMNS = (COL_TIMESTAMP, COL_STEP, COL_STATUS)
 STEP_SURVEY_FILENAME = "step_survey.tsv"
 STEP_SURVEY_COLUMNS = (COL_STEP, *SURVEY_COLUMNS)
-QUESTION_TOOLS_EASIER = (
-    "Did the Nipoppy/Neurobagel tools make things easier to do this step?"
-)
+QUESTION_TOOL_EASIER_TEMPLATE = "Did {tool} make it easier to do this step?"
 TOOLS_EASIER_CHOICES = ("yes", "no", "unsure")
 QUESTION_TIME_WITHOUT_TOOLS = (
-    "How long do you think this would have taken without the Nipoppy/Neurobagel tools?"
+    "How long do you think this would have taken without {tool}?"
 )
 TIME_WITHOUT_TOOLS_CHOICES = ("<1h", "1-4h", "4-8h", "1-3d", "3-7d", ">7d")
 QUESTION_NOTES = "Notes/feedback"

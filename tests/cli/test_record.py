@@ -7,12 +7,15 @@ from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
 from brainflex.cli.main import app
-from brainflex.core.record import Status, Step
+from brainflex.core.record import (
+    Status,
+    Step,
+    get_time_without_tools_question,
+    get_tools_easier_question,
+)
 from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
     QUESTION_NOTES,
-    QUESTION_TIME_WITHOUT_TOOLS,
-    QUESTION_TOOLS_EASIER,
     STEP_SURVEY_FILENAME,
     TIMESTAMPS_FILENAME,
 )
@@ -75,8 +78,8 @@ class TestRecord:
         assert result.exit_code == 0
         stdout = _unwrap(result.stdout)
         assert QUESTION_NOTES in stdout
-        assert QUESTION_TOOLS_EASIER not in stdout
-        assert QUESTION_TIME_WITHOUT_TOOLS not in stdout
+        assert "make it easier" not in stdout
+        assert "would have taken" not in stdout
         assert (
             f"Saved timestamp for (fedbiomed_node_part_1, end) to {FPATH_TIMESTAMPS}"
             in result.stdout
@@ -91,11 +94,20 @@ class TestRecord:
         )
 
     @pytest.mark.parametrize(
-        "step",
-        [Step.IDP_EXTRACTION, Step.SEMANTIC_HARMONIZATION, Step.FL_READY_DATASET],
+        ("step", "tool"),
+        [
+            (Step.IDP_EXTRACTION, "Nipoppy"),
+            (Step.SEMANTIC_HARMONIZATION, "Neurobagel"),
+            (Step.FL_READY_DATASET, "Nipoppy"),
+        ],
     )
     def test_end_data_prep(
-        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path, step: Step
+        self,
+        runner: CliRunner,
+        mock_record: MagicMock,
+        dpath_root: Path,
+        step: Step,
+        tool: str,
     ):
         result = runner.invoke(
             app,
@@ -106,8 +118,8 @@ class TestRecord:
         stdout = _unwrap(result.stdout)
         # questions are asked in order, with the free-form question last
         assert (
-            stdout.index(QUESTION_TOOLS_EASIER)
-            < stdout.index(QUESTION_TIME_WITHOUT_TOOLS)
+            stdout.index(f"Did {tool} make it easier to do this step?")
+            < stdout.index(f"would have taken without {tool}?")
             < stdout.index(QUESTION_NOTES)
         )
         assert "[yes/no/unsure]" in stdout
@@ -120,8 +132,8 @@ class TestRecord:
             step,
             Status.END,
             answers={
-                QUESTION_TOOLS_EASIER: "yes",
-                QUESTION_TIME_WITHOUT_TOOLS: "1-4h",
+                get_tools_easier_question(step): "yes",
+                get_time_without_tools_question(step): "1-4h",
                 QUESTION_NOTES: "went fine",
             },
             timestamp=ANY,
@@ -141,8 +153,8 @@ class TestRecord:
             Step.IDP_EXTRACTION,
             Status.END,
             answers={
-                QUESTION_TOOLS_EASIER: "unsure",
-                QUESTION_TIME_WITHOUT_TOOLS: ">7d",
+                get_tools_easier_question(Step.IDP_EXTRACTION): "unsure",
+                get_time_without_tools_question(Step.IDP_EXTRACTION): ">7d",
                 QUESTION_NOTES: "",
             },
             timestamp=ANY,
@@ -282,7 +294,10 @@ class TestRecord:
         assert list(df_timestamps["status"]) == ["start", "end"]
         assert (dpath / STEP_SURVEY_FILENAME).read_text().splitlines() == [
             "step\tquestion\tanswer",
-            f"fl_ready_dataset\t{QUESTION_TOOLS_EASIER}\tyes",
-            f"fl_ready_dataset\t{QUESTION_TIME_WITHOUT_TOOLS}\t<1h",
+            "fl_ready_dataset\tDid Nipoppy make it easier to do this step?\tyes",
+            (
+                "fl_ready_dataset\tHow long do you think this would have taken"
+                " without Nipoppy?\t<1h"
+            ),
             f"fl_ready_dataset\t{QUESTION_NOTES}\tok",
         ]

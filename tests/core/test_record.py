@@ -1,4 +1,5 @@
 import warnings
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,24 +12,26 @@ from brainflex.core.record import (
     Step,
     check_status,
     get_step_questions,
+    get_time_without_tools_question,
+    get_tools_easier_question,
     record,
 )
 from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
     QUESTION_NOTES,
-    QUESTION_TIME_WITHOUT_TOOLS,
-    QUESTION_TOOLS_EASIER,
     STEP_SURVEY_COLUMNS,
     STEP_SURVEY_FILENAME,
     TIMESTAMPS_COLUMNS,
     TIMESTAMPS_FILENAME,
 )
 
-DATA_PREP_ANSWERS = {
-    QUESTION_TOOLS_EASIER: "yes",
-    QUESTION_TIME_WITHOUT_TOOLS: "1-4h",
-    QUESTION_NOTES: "went fine",
-}
+
+def _data_prep_answers(step: Step) -> dict[str, str]:
+    return {
+        get_tools_easier_question(step): "yes",
+        get_time_without_tools_question(step): "1-4h",
+        QUESTION_NOTES: "went fine",
+    }
 
 
 @pytest.fixture
@@ -55,9 +58,23 @@ class TestGetStepQuestions:
     @pytest.mark.parametrize("step", sorted(DATA_PREP_STEPS))
     def test_data_prep(self, step: Step):
         assert list(get_step_questions(step)) == [
-            QUESTION_TOOLS_EASIER,
-            QUESTION_TIME_WITHOUT_TOOLS,
+            get_tools_easier_question(step),
+            get_time_without_tools_question(step),
             QUESTION_NOTES,
+        ]
+
+    @pytest.mark.parametrize(
+        ("step", "tool"),
+        [
+            (Step.IDP_EXTRACTION, "Nipoppy"),
+            (Step.SEMANTIC_HARMONIZATION, "Neurobagel"),
+            (Step.FL_READY_DATASET, "Nipoppy"),
+        ],
+    )
+    def test_data_prep_tool(self, step: Step, tool: str):
+        assert list(get_step_questions(step))[:2] == [
+            f"Did {tool} make it easier to do this step?",
+            f"How long do you think this would have taken without {tool}?",
         ]
 
     @pytest.mark.parametrize("step", sorted(set(Step) - DATA_PREP_STEPS))
@@ -92,7 +109,10 @@ class TestRecord:
     ):
         record(root, Step.IDP_EXTRACTION, Status.START)
         assert record(
-            root, Step.IDP_EXTRACTION, Status.END, answers=DATA_PREP_ANSWERS
+            root,
+            Step.IDP_EXTRACTION,
+            Status.END,
+            answers=_data_prep_answers(Step.IDP_EXTRACTION),
         ) == (fpath_timestamps, fpath_survey)
         assert list(_read(fpath_timestamps)["status"]) == ["start", "end"]
         assert fpath_timestamps.read_text().count("timestamp") == 1
@@ -101,12 +121,14 @@ class TestRecord:
         assert df.to_dict("records") == [
             {
                 "step": "idp_extraction",
-                "question": QUESTION_TOOLS_EASIER,
+                "question": "Did Nipoppy make it easier to do this step?",
                 "answer": "yes",
             },
             {
                 "step": "idp_extraction",
-                "question": QUESTION_TIME_WITHOUT_TOOLS,
+                "question": (
+                    "How long do you think this would have taken without Nipoppy?"
+                ),
                 "answer": "1-4h",
             },
             {
@@ -126,19 +148,20 @@ class TestRecord:
         ]
 
     def test_survey_appends_in_question_order(self, root: Path, fpath_survey: Path):
+        answers = _data_prep_answers(Step.FL_READY_DATASET)
         record(root, Step.FL_READY_DATASET, Status.START)
         record(
             root,
             Step.FL_READY_DATASET,
             Status.END,
-            answers=dict(reversed(DATA_PREP_ANSWERS.items())),
+            answers=dict(reversed(answers.items())),
         )
         record(root, Step.FEDBIOMED_NODE_PART_2, Status.START)
         record(
             root, Step.FEDBIOMED_NODE_PART_2, Status.END, answers={QUESTION_NOTES: "x"}
         )
         df = _read(fpath_survey)
-        assert list(df["question"]) == [*DATA_PREP_ANSWERS, QUESTION_NOTES]
+        assert list(df["question"]) == [*answers, QUESTION_NOTES]
         assert fpath_survey.read_text().count("question") == 1
 
     def test_notes_with_special_characters(self, root: Path, fpath_survey: Path):
@@ -158,7 +181,17 @@ class TestRecord:
             (Step.IDP_EXTRACTION, Status.START, {QUESTION_NOTES: ""}),
             (Step.IDP_EXTRACTION, Status.END, None),
             (Step.IDP_EXTRACTION, Status.END, {QUESTION_NOTES: ""}),
-            (Step.FEDBIOMED_NODE_PART_1, Status.END, DATA_PREP_ANSWERS),
+            (
+                Step.FEDBIOMED_NODE_PART_1,
+                Status.END,
+                _data_prep_answers(Step.IDP_EXTRACTION),
+            ),
+            # questions name the tool used in a different step
+            (
+                Step.SEMANTIC_HARMONIZATION,
+                Status.END,
+                _data_prep_answers(Step.IDP_EXTRACTION),
+            ),
             (Step.FEDBIOMED_NODE_PART_1, Status.END, {"Unknown?": ""}),
         ],
     )
@@ -177,22 +210,27 @@ class TestRecord:
         assert not fpath_survey.exists()
 
     @pytest.mark.parametrize(
-        ("question", "answer"),
+        ("get_question", "answer"),
         [
-            (QUESTION_TOOLS_EASIER, "maybe"),
-            (QUESTION_TOOLS_EASIER, "4"),
-            (QUESTION_TIME_WITHOUT_TOOLS, "2 days"),
+            (get_tools_easier_question, "maybe"),
+            (get_tools_easier_question, "4"),
+            (get_time_without_tools_question, "2 days"),
         ],
     )
     def test_invalid_answer(
-        self, root: Path, fpath_timestamps: Path, question: str, answer: str
+        self,
+        root: Path,
+        fpath_timestamps: Path,
+        get_question: Callable[[Step], str],
+        answer: str,
     ):
+        step = Step.SEMANTIC_HARMONIZATION
         with pytest.raises(ValueError, match="must be one of"):
             record(
                 root,
-                Step.SEMANTIC_HARMONIZATION,
+                step,
                 Status.END,
-                answers={**DATA_PREP_ANSWERS, question: answer},
+                answers={**_data_prep_answers(step), get_question(step): answer},
             )
         assert not fpath_timestamps.exists()
 
