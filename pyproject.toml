@@ -34,6 +34,7 @@ doc = [
     "myst-parser",
     "sphinx",
     "sphinx-copybutton",
+    "sphinx-togglebutton",
 ]
 test = [
     "pytest-cov",

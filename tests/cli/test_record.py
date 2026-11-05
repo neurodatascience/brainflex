@@ -1,36 +1,68 @@
-import warnings
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
+import pandas as pd
 import pytest
 from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
 from brainflex.cli.main import app
-from brainflex.core.record import Status, Step
+from brainflex.core.record import (
+    Status,
+    Step,
+    get_time_without_tools_question,
+    get_tools_easier_question,
+)
+from brainflex.utils.constants import (
+    BRAINFLEX_DIRNAME,
+    QUESTION_NOTES,
+    STEP_SURVEY_FILENAME,
+    TIMESTAMPS_FILENAME,
+)
+
+
+def _unwrap(text: str) -> str:
+    """Collapse whitespace so that prompts wrapped by rich can be matched."""
+    return " ".join(text.split())
+
+
+FPATH_TIMESTAMPS = Path("timestamps.tsv")
+FPATH_SURVEY = Path("step_survey.tsv")
+
+
+def _fake_record(*args, answers: dict[str, str], **kwargs) -> tuple[Path, Path | None]:
+    return FPATH_TIMESTAMPS, FPATH_SURVEY if answers else None
 
 
 @pytest.fixture
 def mock_record(mocker: MockerFixture) -> MagicMock:
-    return mocker.patch("brainflex.cli.record.record")
+    return mocker.patch("brainflex.cli.record.record", side_effect=_fake_record)
 
 
 class TestRecord:
     def test_start(self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path):
         result = runner.invoke(
-            app, ["record", "get-data", "start", "--project", str(dpath_root)]
+            app, ["record", "idp_extraction", "start", "--project", str(dpath_root)]
         )
         assert result.exit_code == 0
-        assert "Notes" not in result.stdout
-        assert "Recorded get-data start" in result.stdout
+        assert "?" not in result.stdout
+        assert (
+            f"Saved timestamp for (idp_extraction, start) to {FPATH_TIMESTAMPS}"
+            in result.stdout
+        )
+        assert "Saved answers" not in result.stdout
         mock_record.assert_called_once_with(
-            dpath_root.resolve(), Step.GET_DATA, Status.START, notes=""
+            dpath_root.resolve(),
+            Step.IDP_EXTRACTION,
+            Status.START,
+            answers={},
+            timestamp=ANY,
         )
 
     @pytest.mark.parametrize(
         ("user_input", "notes"), [("went fine\n", "went fine"), ("\n", "")]
     )
-    def test_end(
+    def test_end_other(
         self,
         runner: CliRunner,
         mock_record: MagicMock,
@@ -40,13 +72,116 @@ class TestRecord:
     ):
         result = runner.invoke(
             app,
-            ["record", "get-data", "end", "--project", str(dpath_root)],
+            ["record", "fedbiomed_node_part_1", "end", "--project", str(dpath_root)],
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "Notes" in result.stdout
+        stdout = _unwrap(result.stdout)
+        assert QUESTION_NOTES in stdout
+        assert "make it easier" not in stdout
+        assert "would have taken" not in stdout
+        assert (
+            f"Saved timestamp for (fedbiomed_node_part_1, end) to {FPATH_TIMESTAMPS}"
+            in result.stdout
+        )
+        assert f"Saved answers to {FPATH_SURVEY}" in result.stdout
         mock_record.assert_called_once_with(
-            dpath_root.resolve(), Step.GET_DATA, Status.END, notes=notes
+            dpath_root.resolve(),
+            Step.FEDBIOMED_NODE_PART_1,
+            Status.END,
+            answers={QUESTION_NOTES: notes},
+            timestamp=ANY,
+        )
+
+    @pytest.mark.parametrize(
+        ("step", "tool"),
+        [
+            (Step.IDP_EXTRACTION, "Nipoppy"),
+            (Step.SEMANTIC_HARMONIZATION, "Neurobagel"),
+            (Step.FL_READY_DATASET, "Nipoppy"),
+        ],
+    )
+    def test_end_data_prep(
+        self,
+        runner: CliRunner,
+        mock_record: MagicMock,
+        dpath_root: Path,
+        step: Step,
+        tool: str,
+    ):
+        result = runner.invoke(
+            app,
+            ["record", str(step), "end", "--project", str(dpath_root)],
+            input="yes\n1-4h\nwent fine\n",
+        )
+        assert result.exit_code == 0
+        stdout = _unwrap(result.stdout)
+        # questions are asked in order, with the free-form question last
+        assert (
+            stdout.index(f"Did {tool} make it easier to do this step?")
+            < stdout.index(f"would have taken without {tool}?")
+            < stdout.index(QUESTION_NOTES)
+        )
+        assert "[yes/no/unsure]" in stdout
+        assert (
+            f"Saved timestamp for ({step}, end) to {FPATH_TIMESTAMPS}" in result.stdout
+        )
+        assert f"Saved answers to {FPATH_SURVEY}" in result.stdout
+        mock_record.assert_called_once_with(
+            dpath_root.resolve(),
+            step,
+            Status.END,
+            answers={
+                get_tools_easier_question(step): "yes",
+                get_time_without_tools_question(step): "1-4h",
+                QUESTION_NOTES: "went fine",
+            },
+            timestamp=ANY,
+        )
+
+    def test_end_data_prep_invalid_input_reprompts(
+        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path
+    ):
+        result = runner.invoke(
+            app,
+            ["record", "idp_extraction", "end", "--project", str(dpath_root)],
+            input="maybe\nunsure\n2 days\n>7d\n\n",
+        )
+        assert result.exit_code == 0
+        mock_record.assert_called_once_with(
+            dpath_root.resolve(),
+            Step.IDP_EXTRACTION,
+            Status.END,
+            answers={
+                get_tools_easier_question(Step.IDP_EXTRACTION): "unsure",
+                get_time_without_tools_question(Step.IDP_EXTRACTION): ">7d",
+                QUESTION_NOTES: "",
+            },
+            timestamp=ANY,
+        )
+
+    def test_timestamp_before_prompts(
+        self,
+        runner: CliRunner,
+        mock_record: MagicMock,
+        dpath_root: Path,
+        mocker: MockerFixture,
+    ):
+        manager = MagicMock()
+        mock_datetime = mocker.patch("brainflex.cli.record.datetime")
+        mock_ask = mocker.patch("brainflex.cli.record.Prompt.ask", return_value="")
+        manager.attach_mock(mock_datetime.now, "now")
+        manager.attach_mock(mock_ask, "ask")
+        result = runner.invoke(
+            app,
+            ["record", "fedbiomed_node_part_1", "end", "--project", str(dpath_root)],
+        )
+        assert result.exit_code == 0
+        names = [name for name, *_ in manager.mock_calls]
+        assert names.index("now") < names.index("ask")
+        assert (
+            mock_record.call_args.kwargs["timestamp"]
+            is mock_datetime.now.return_value.astimezone.return_value
         )
 
     def test_default_path(
@@ -57,10 +192,14 @@ class TestRecord:
         monkeypatch: pytest.MonkeyPatch,
     ):
         monkeypatch.chdir(dpath_root)
-        result = runner.invoke(app, ["record", "get-data", "start"])
+        result = runner.invoke(app, ["record", "idp_extraction", "start"])
         assert result.exit_code == 0
         mock_record.assert_called_once_with(
-            dpath_root.resolve(), Step.GET_DATA, Status.START, notes=""
+            dpath_root.resolve(),
+            Step.IDP_EXTRACTION,
+            Status.START,
+            answers={},
+            timestamp=ANY,
         )
 
     @pytest.mark.parametrize("explicit", [True, False])
@@ -78,18 +217,23 @@ class TestRecord:
             app,
             [
                 "record",
-                "get-data",
+                "idp_extraction",
                 "start",
                 *(["--project", str(dpath_subdir)] if explicit else []),
             ],
         )
         assert result.exit_code == 0
         mock_record.assert_called_once_with(
-            dpath_root.resolve(), Step.GET_DATA, Status.START, notes=""
+            dpath_root.resolve(),
+            Step.IDP_EXTRACTION,
+            Status.START,
+            answers={},
+            timestamp=ANY,
         )
 
     @pytest.mark.parametrize(
-        "args", [["bad-step", "start"], ["get-data", "bad-status"]]
+        "args",
+        [["get-data", "start"], ["bad-step", "start"], ["idp_extraction", "bad"]],
     )
     def test_invalid_choice(
         self, runner: CliRunner, mock_record: MagicMock, args: list[str]
@@ -98,12 +242,62 @@ class TestRecord:
         assert result.exit_code == 2
         mock_record.assert_not_called()
 
-    def test_warning(self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path):
-        mock_record.side_effect = lambda *args, **kwargs: warnings.warn(
-            "step get-data was already started", stacklevel=2
+    def test_warning_already_started(
+        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path
+    ):
+        args = ["record", "idp_extraction", "start", "--project", str(dpath_root)]
+        mock_record.side_effect = None
+        (dpath_root / BRAINFLEX_DIRNAME / TIMESTAMPS_FILENAME).write_text(
+            "timestamp\tstep\tstatus\nt0\tidp_extraction\tstart\n"
         )
+        mock_record.return_value = (FPATH_TIMESTAMPS, None)
+        result = runner.invoke(app, args)
+        assert result.exit_code == 0
+        assert "WARNING: step idp_extraction was already started" in result.stderr
+
+    @pytest.mark.parametrize("step", ["idp_extraction", "fedbiomed_node_part_1"])
+    def test_warning_not_started_printed_first(
+        self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path, step: str
+    ):
         result = runner.invoke(
-            app, ["record", "get-data", "start", "--project", str(dpath_root)]
+            app,
+            ["record", step, "end", "--project", str(dpath_root)],
+            input="yes\n1-4h\n\n",
         )
         assert result.exit_code == 0
-        assert "WARNING: step get-data was already started" in result.stderr
+        assert result.output.startswith(f"WARNING: step {step} was not started\n")
+        mock_record.assert_called_once()
+
+    def test_end_to_end(self, runner: CliRunner, dpath_root: Path):
+        args = ["record", "fl_ready_dataset", "--project", str(dpath_root)]
+        args_start = [*args[:2], "start", *args[2:]]
+        args_end = [*args[:2], "end", *args[2:]]
+        dpath = dpath_root.resolve() / BRAINFLEX_DIRNAME
+        result = runner.invoke(app, args_start)
+        assert result.exit_code == 0
+        fpath_timestamps = dpath / TIMESTAMPS_FILENAME
+        assert (
+            f"Saved timestamp for (fl_ready_dataset, start) to {fpath_timestamps}"
+            in result.stdout
+        )
+        assert "Saved answers" not in result.stdout
+        result = runner.invoke(app, args_end, input="yes\n<1h\nok\n")
+        assert "WARNING" not in result.stderr
+        assert result.exit_code == 0
+        assert (
+            f"Saved timestamp for (fl_ready_dataset, end) to {fpath_timestamps}"
+            in result.stdout
+        )
+        assert f"Saved answers to {dpath / STEP_SURVEY_FILENAME}" in result.stdout
+        df_timestamps = pd.read_csv(dpath / TIMESTAMPS_FILENAME, sep="\t", dtype=str)
+        assert list(df_timestamps.columns) == ["timestamp", "step", "status"]
+        assert list(df_timestamps["status"]) == ["start", "end"]
+        assert (dpath / STEP_SURVEY_FILENAME).read_text().splitlines() == [
+            "step\tquestion\tanswer",
+            "fl_ready_dataset\tDid Nipoppy make it easier to do this step?\tyes",
+            (
+                "fl_ready_dataset\tHow long do you think this would have taken"
+                " without Nipoppy?\t<1h"
+            ),
+            f"fl_ready_dataset\t{QUESTION_NOTES}\tok",
+        ]

@@ -1,28 +1,39 @@
 """Record the start and end of experiment steps."""
 
 import warnings
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
-import pandas as pd
-
 from brainflex.utils.constants import (
-    BACKUP_TIMESTAMP_FORMAT,
     BRAINFLEX_DIRNAME,
-    COL_NOTES,
+    COL_ANSWER,
+    COL_QUESTION,
     COL_STATUS,
     COL_STEP,
     COL_TIMESTAMP,
-    STATUS_LOG_COLUMNS,
-    STATUS_LOG_FILENAME,
+    QUESTION_NOTES,
+    QUESTION_TIME_WITHOUT_TOOL_TEMPLATE,
+    QUESTION_TOOL_EASIER_TEMPLATE,
+    STEP_SURVEY_COLUMNS,
+    STEP_SURVEY_FILENAME,
+    TIME_WITHOUT_TOOLS_CHOICES,
+    TIMESTAMPS_COLUMNS,
+    TIMESTAMPS_FILENAME,
+    TOOLS_EASIER_CHOICES,
 )
+from brainflex.utils.tsv import append_tsv, load_tsv
 
 
 class Step(StrEnum):
     """Experiment steps."""
 
-    GET_DATA = "get-data"
+    IDP_EXTRACTION = "idp_extraction"
+    SEMANTIC_HARMONIZATION = "semantic_harmonization"
+    FL_READY_DATASET = "fl_ready_dataset"
+    FEDBIOMED_NODE_PART_1 = "fedbiomed_node_part_1"
+    FEDBIOMED_NODE_PART_2 = "fedbiomed_node_part_2"
 
 
 class Status(StrEnum):
@@ -32,51 +43,148 @@ class Status(StrEnum):
     END = "end"
 
 
-def _load_status_log(fpath: Path, now: datetime) -> pd.DataFrame:
-    """Load the status log, or return an empty one if it does not exist.
+DATA_PREP_STEPS = frozenset(
+    {Step.IDP_EXTRACTION, Step.SEMANTIC_HARMONIZATION, Step.FL_READY_DATASET}
+)
 
-    If the file cannot be parsed or is missing expected columns, it is moved to a
-    timestamped backup and an empty log is returned.
+# tool used in each data preparation step
+STEP_TOOLS: dict[Step, str] = {
+    Step.IDP_EXTRACTION: "Nipoppy",
+    Step.SEMANTIC_HARMONIZATION: "Neurobagel",
+    Step.FL_READY_DATASET: "Nipoppy",
+}
+
+COMMON_QUESTIONS: dict[str, tuple[str, ...] | None] = {QUESTION_NOTES: None}
+
+# high-level summaries of data preparation steps
+STEP_SUMMARIES: dict[Step, str] = {
+    Step.IDP_EXTRACTION: (
+        "\nIn this step, you used a script that wraps FreeSurfer tools to:\n- extract "
+        "imaging-derived phenotypes (IDPs) (cortical thickness, subcortical volumes, "
+        "etc.) from existing FreeSurfer subject directories\n- combine them into "
+        "tabular files with standardized structure and column names (shared with every "
+        "other site participating in the FL experiment)"
+    ),
+    Step.SEMANTIC_HARMONIZATION: (
+        "\nIn this step, you created a file containing participant IDs, session IDs, and "
+        "demographic information (age, sex) that use standardized column names and "
+        "values (shared with every other site participating in the FL experiment), "
+        "despite the fact that the original demographic data may have used "
+        "different names or values."
+    ),
+    Step.FL_READY_DATASET: (
+        "\nIn this step, you merged the previously extracted FreeSurfer IDPs and "
+        "harmonized phenotypic data into datasets formatted in a way that can be used "
+        "directly by the Fed-BioMed federated learning framework. All sites "
+        "participating in the FL experiment will have datasets with the same structure "
+        "and column names, so that they can be used together to train models."
+    ),
+}
+
+
+def get_tools_easier_question(step: Step) -> str:
+    """Return the question about whether the tool made a data preparation step easier."""
+    return QUESTION_TOOL_EASIER_TEMPLATE.format(tool=STEP_TOOLS[step])
+
+
+def get_time_without_tools_question(step: Step) -> str:
+    """Return the question about how long a data preparation step would have taken."""
+    return QUESTION_TIME_WITHOUT_TOOL_TEMPLATE.format(tool=STEP_TOOLS[step])
+
+
+def get_step_questions(step: Step) -> dict[str, tuple[str, ...] | None]:
+    """Return the questions asked at the end of a step, mapped to allowed answers.
+
+    Allowed answers are None for free text.
     """
-    if not fpath.exists():
-        return pd.DataFrame(columns=STATUS_LOG_COLUMNS)
+    if step in DATA_PREP_STEPS:
+        return {
+            get_tools_easier_question(step): TOOLS_EASIER_CHOICES,
+            get_time_without_tools_question(step): TIME_WITHOUT_TOOLS_CHOICES,
+        } | COMMON_QUESTIONS
+    return dict(COMMON_QUESTIONS)
 
-    try:
-        df = pd.read_csv(fpath, sep="\t", dtype=str, keep_default_na=False)
-    except (pd.errors.EmptyDataError, pd.errors.ParserError):
-        df = None
 
-    if df is not None and set(STATUS_LOG_COLUMNS).issubset(df.columns):
-        return df
+def get_step_summary(step: Step) -> str | None:
+    """Return a high-level summary of a data preparation step (None otherwise)."""
+    return STEP_SUMMARIES.get(step)
 
-    fpath_backup = fpath.with_name(
-        f"{fpath.stem}-{now.strftime(BACKUP_TIMESTAMP_FORMAT)}{fpath.suffix}"
+
+def _check_answers(
+    step: Step, status: Status, answers: Mapping[str, str]
+) -> dict[str, tuple[str, ...] | None]:
+    """Raise ValueError if the answers don't match the questions for the step."""
+    questions = get_step_questions(step) if status == Status.END else {}
+    if set(answers) != set(questions):
+        raise ValueError(
+            f"Answers for {step} {status} must be given for exactly these"
+            f" questions: {list(questions)}"
+        )
+    for question, answer in answers.items():
+        choices = questions[question]
+        if choices is not None and answer not in choices:
+            raise ValueError(
+                f"Invalid answer {answer!r} to {question!r}:"
+                f" must be one of {', '.join(choices)}"
+            )
+    return questions
+
+
+def check_status(root: Path, step: Step, status: Status) -> None:
+    """Warn if a step is started twice or ended without being started."""
+    df_timestamps = load_tsv(
+        root / BRAINFLEX_DIRNAME / TIMESTAMPS_FILENAME, TIMESTAMPS_COLUMNS
     )
-    fpath.rename(fpath_backup)
-    warnings.warn(f"invalid status log moved to {fpath_backup}", stacklevel=3)
-    return pd.DataFrame(columns=STATUS_LOG_COLUMNS)
-
-
-def record(root: Path, step: Step, status: Status, notes: str = "") -> None:
-    """Add a timestamped row to the status log, creating it if needed.
-
-    Warns if a step is started twice or ended without being started.
-    """
-    now = datetime.now().astimezone()
-    df = _load_status_log(fpath := root / BRAINFLEX_DIRNAME / STATUS_LOG_FILENAME, now)
-
-    statuses = df.query(f"{COL_STEP} == @step")[COL_STATUS]
+    statuses = df_timestamps.query(f"{COL_STEP} == @step")[COL_STATUS]
     last_status = statuses.iloc[-1] if not statuses.empty else None
     if status == Status.START and last_status == Status.START:
         warnings.warn(f"step {step} was already started", stacklevel=2)
     elif status == Status.END and last_status != Status.START:
         warnings.warn(f"step {step} was not started", stacklevel=2)
 
+
+def record(
+    root: Path,
+    step: Step,
+    status: Status,
+    answers: Mapping[str, str] | None = None,
+    timestamp: datetime | None = None,
+) -> tuple[Path, Path | None]:
+    """Record the start or end of a step + some survey answers.
+
+    Call ``check_status`` first to warn about steps started twice or ended without
+    being started. Returns the paths to the timestamps file and to the survey file
+    (if applicable).
+    """
+    answers = answers or {}
+    questions = _check_answers(step, status, answers)
+
+    dpath = root / BRAINFLEX_DIRNAME
+    fpath_timestamps = dpath / TIMESTAMPS_FILENAME
+    timestamp = timestamp or datetime.now()
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.astimezone()  # naive -> interpret as local time
     row = {
-        COL_TIMESTAMP: now.isoformat(timespec="seconds"),
+        COL_TIMESTAMP: timestamp.isoformat(timespec="seconds"),
         COL_STEP: str(step),
         COL_STATUS: str(status),
-        COL_NOTES: notes,
     }
-    df = pd.concat([df, pd.DataFrame([row], columns=STATUS_LOG_COLUMNS)])
-    df.to_csv(fpath, sep="\t", index=False)
+    append_tsv(fpath_timestamps, TIMESTAMPS_COLUMNS, [row])
+
+    if not questions:
+        return fpath_timestamps, None
+
+    fpath_survey = dpath / STEP_SURVEY_FILENAME
+    append_tsv(
+        fpath_survey,
+        STEP_SURVEY_COLUMNS,
+        (
+            {
+                COL_STEP: str(step),
+                COL_QUESTION: q,
+                COL_ANSWER: answers[q],
+            }
+            for q in questions
+        ),
+    )
+    return fpath_timestamps, fpath_survey

@@ -19,9 +19,10 @@ author = "NeuroDataScience-ORIGAMI Lab"
 extensions = [
     "myst_parser",
     "sphinx_copybutton",
+    "sphinx_togglebutton",
 ]
 
-exclude_patterns = []
+exclude_patterns = ["_includes"]
 
 nitpicky = True
 

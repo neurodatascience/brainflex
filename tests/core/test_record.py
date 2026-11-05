@@ -1,16 +1,37 @@
 import warnings
-from datetime import datetime
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from brainflex.core.record import Status, Step, record
+from brainflex.core.record import (
+    DATA_PREP_STEPS,
+    Status,
+    Step,
+    check_status,
+    get_step_questions,
+    get_time_without_tools_question,
+    get_tools_easier_question,
+    record,
+)
 from brainflex.utils.constants import (
     BRAINFLEX_DIRNAME,
-    STATUS_LOG_COLUMNS,
-    STATUS_LOG_FILENAME,
+    QUESTION_NOTES,
+    STEP_SURVEY_COLUMNS,
+    STEP_SURVEY_FILENAME,
+    TIMESTAMPS_COLUMNS,
+    TIMESTAMPS_FILENAME,
 )
+
+
+def _data_prep_answers(step: Step) -> dict[str, str]:
+    return {
+        get_tools_easier_question(step): "yes",
+        get_time_without_tools_question(step): "1-4h",
+        QUESTION_NOTES: "went fine",
+    }
 
 
 @pytest.fixture
@@ -20,99 +41,276 @@ def root(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def fpath_log(root: Path) -> Path:
-    return root / BRAINFLEX_DIRNAME / STATUS_LOG_FILENAME
+def fpath_timestamps(root: Path) -> Path:
+    return root / BRAINFLEX_DIRNAME / TIMESTAMPS_FILENAME
+
+
+@pytest.fixture
+def fpath_survey(root: Path) -> Path:
+    return root / BRAINFLEX_DIRNAME / STEP_SURVEY_FILENAME
 
 
 def _read(fpath: Path) -> pd.DataFrame:
     return pd.read_csv(fpath, sep="\t", dtype=str, keep_default_na=False)
 
 
-class TestRecord:
-    def test_creates_file(self, root: Path, fpath_log: Path):
-        record(root, Step.GET_DATA, Status.START)
-        df = _read(fpath_log)
-        assert tuple(df.columns) == STATUS_LOG_COLUMNS
-        assert len(df) == 1
-        row = df.iloc[0]
-        assert row["step"] == "get-data"
-        assert row["status"] == "start"
-        assert row["notes"] == ""
-        assert datetime.fromisoformat(row["timestamp"]).tzinfo is not None
-
-    def test_appends(self, root: Path, fpath_log: Path):
-        record(root, Step.GET_DATA, Status.START)
-        record(root, Step.GET_DATA, Status.END, notes="went fine")
-        df = _read(fpath_log)
-        assert list(df["status"]) == ["start", "end"]
-        assert list(df["notes"]) == ["", "went fine"]
-        assert fpath_log.read_text().count("timestamp") == 1
-
-    def test_notes_with_special_characters(self, root: Path, fpath_log: Path):
-        notes = 'tab\there\nnew line and "quotes"'
-        record(root, Step.GET_DATA, Status.START)
-        record(root, Step.GET_DATA, Status.END, notes=notes)
-        assert _read(fpath_log).iloc[-1]["notes"] == notes
-
-    def test_no_warning(self, root: Path):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
-            record(root, Step.GET_DATA, Status.START)
-            record(root, Step.GET_DATA, Status.END)
+class TestGetStepQuestions:
+    @pytest.mark.parametrize("step", sorted(DATA_PREP_STEPS))
+    def test_data_prep(self, step: Step):
+        assert list(get_step_questions(step)) == [
+            get_tools_easier_question(step),
+            get_time_without_tools_question(step),
+            QUESTION_NOTES,
+        ]
 
     @pytest.mark.parametrize(
-        ("statuses", "message"),
+        ("step", "tool"),
         [
-            ([Status.END], "was not started"),
-            ([Status.START, Status.START], "was already started"),
-            ([Status.START, Status.END, Status.END], "was not started"),
+            (Step.IDP_EXTRACTION, "Nipoppy"),
+            (Step.SEMANTIC_HARMONIZATION, "Neurobagel"),
+            (Step.FL_READY_DATASET, "Nipoppy"),
+        ],
+    )
+    def test_data_prep_tool(self, step: Step, tool: str):
+        assert list(get_step_questions(step))[:2] == [
+            f"Did {tool} make it easier to do this step?",
+            f"How long do you think this would have taken without {tool}?",
+        ]
+
+    @pytest.mark.parametrize("step", sorted(set(Step) - DATA_PREP_STEPS))
+    def test_other(self, step: Step):
+        assert list(get_step_questions(step)) == [QUESTION_NOTES]
+
+
+class TestRecord:
+    def test_start(self, root: Path, fpath_timestamps: Path, fpath_survey: Path):
+        assert record(root, Step.IDP_EXTRACTION, Status.START) == (
+            fpath_timestamps,
+            None,
+        )
+        df = _read(fpath_timestamps)
+        assert tuple(df.columns) == TIMESTAMPS_COLUMNS
+        assert len(df) == 1
+        row = df.iloc[0]
+        assert row["step"] == "idp_extraction"
+        assert row["status"] == "start"
+        assert datetime.fromisoformat(row["timestamp"]).tzinfo is not None
+        assert not fpath_survey.exists()
+
+    def test_timestamp(self, root: Path, fpath_timestamps: Path):
+        timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone(timedelta(hours=-5)))
+        record(root, Step.IDP_EXTRACTION, Status.START, timestamp=timestamp)
+        assert _read(fpath_timestamps)["timestamp"].iloc[0] == (
+            "2026-01-02T03:04:05-05:00"
+        )
+
+    def test_end_data_prep(
+        self, root: Path, fpath_timestamps: Path, fpath_survey: Path
+    ):
+        record(root, Step.IDP_EXTRACTION, Status.START)
+        assert record(
+            root,
+            Step.IDP_EXTRACTION,
+            Status.END,
+            answers=_data_prep_answers(Step.IDP_EXTRACTION),
+        ) == (fpath_timestamps, fpath_survey)
+        assert list(_read(fpath_timestamps)["status"]) == ["start", "end"]
+        assert fpath_timestamps.read_text().count("timestamp") == 1
+        df = _read(fpath_survey)
+        assert tuple(df.columns) == STEP_SURVEY_COLUMNS
+        assert df.to_dict("records") == [
+            {
+                "step": "idp_extraction",
+                "question": "Did Nipoppy make it easier to do this step?",
+                "answer": "yes",
+            },
+            {
+                "step": "idp_extraction",
+                "question": (
+                    "How long do you think this would have taken without Nipoppy?"
+                ),
+                "answer": "1-4h",
+            },
+            {
+                "step": "idp_extraction",
+                "question": QUESTION_NOTES,
+                "answer": "went fine",
+            },
+        ]
+
+    def test_end_other(self, root: Path, fpath_timestamps: Path, fpath_survey: Path):
+        record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
+        assert record(
+            root, Step.FEDBIOMED_NODE_PART_1, Status.END, answers={QUESTION_NOTES: ""}
+        ) == (fpath_timestamps, fpath_survey)
+        assert _read(fpath_survey).to_dict("records") == [
+            {"step": "fedbiomed_node_part_1", "question": QUESTION_NOTES, "answer": ""}
+        ]
+
+    def test_survey_appends_in_question_order(self, root: Path, fpath_survey: Path):
+        answers = _data_prep_answers(Step.FL_READY_DATASET)
+        record(root, Step.FL_READY_DATASET, Status.START)
+        record(
+            root,
+            Step.FL_READY_DATASET,
+            Status.END,
+            answers=dict(reversed(answers.items())),
+        )
+        record(root, Step.FEDBIOMED_NODE_PART_2, Status.START)
+        record(
+            root, Step.FEDBIOMED_NODE_PART_2, Status.END, answers={QUESTION_NOTES: "x"}
+        )
+        df = _read(fpath_survey)
+        assert list(df["question"]) == [*answers, QUESTION_NOTES]
+        assert fpath_survey.read_text().count("question") == 1
+
+    def test_notes_with_special_characters(self, root: Path, fpath_survey: Path):
+        notes = 'tab\there\nnew line and "quotes"'
+        record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
+        record(
+            root,
+            Step.FEDBIOMED_NODE_PART_1,
+            Status.END,
+            answers={QUESTION_NOTES: notes},
+        )
+        assert _read(fpath_survey).iloc[-1]["answer"] == notes
+
+    @pytest.mark.parametrize(
+        ("step", "status", "answers"),
+        [
+            (Step.IDP_EXTRACTION, Status.START, {QUESTION_NOTES: ""}),
+            (Step.IDP_EXTRACTION, Status.END, None),
+            (Step.IDP_EXTRACTION, Status.END, {QUESTION_NOTES: ""}),
+            (
+                Step.FEDBIOMED_NODE_PART_1,
+                Status.END,
+                _data_prep_answers(Step.IDP_EXTRACTION),
+            ),
+            # questions name the tool used in a different step
+            (
+                Step.SEMANTIC_HARMONIZATION,
+                Status.END,
+                _data_prep_answers(Step.IDP_EXTRACTION),
+            ),
+            (Step.FEDBIOMED_NODE_PART_1, Status.END, {"Unknown?": ""}),
+        ],
+    )
+    def test_invalid_questions(
+        self,
+        root: Path,
+        fpath_timestamps: Path,
+        fpath_survey: Path,
+        step: Step,
+        status: Status,
+        answers: dict[str, str] | None,
+    ):
+        with pytest.raises(ValueError, match="exactly these questions"):
+            record(root, step, status, answers=answers)
+        assert not fpath_timestamps.exists()
+        assert not fpath_survey.exists()
+
+    @pytest.mark.parametrize(
+        ("get_question", "answer"),
+        [
+            (get_tools_easier_question, "maybe"),
+            (get_tools_easier_question, "4"),
+            (get_time_without_tools_question, "2 days"),
+        ],
+    )
+    def test_invalid_answer(
+        self,
+        root: Path,
+        fpath_timestamps: Path,
+        get_question: Callable[[Step], str],
+        answer: str,
+    ):
+        step = Step.SEMANTIC_HARMONIZATION
+        with pytest.raises(ValueError, match="must be one of"):
+            record(
+                root,
+                step,
+                Status.END,
+                answers={**_data_prep_answers(step), get_question(step): answer},
+            )
+        assert not fpath_timestamps.exists()
+
+    def test_no_warning(self, root: Path):
+        # warnings are emitted by check_status
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            record(
+                root,
+                Step.FEDBIOMED_NODE_PART_1,
+                Status.END,
+                answers={QUESTION_NOTES: ""},
+            )
+            record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
+            record(root, Step.FEDBIOMED_NODE_PART_1, Status.START)
+
+    def test_invalid_timestamps_file(self, root: Path, fpath_timestamps: Path):
+        fpath_timestamps.write_text("timestamp\tstep\nt0\tidp_extraction\n")
+        with pytest.warns(UserWarning, match="invalid file"):
+            record(root, Step.IDP_EXTRACTION, Status.START)
+        assert len(list(fpath_timestamps.parent.glob("timestamps-*.tsv"))) == 1
+        assert len(_read(fpath_timestamps)) == 1
+
+
+class TestCheckStatus:
+    def _record(self, root: Path, step: Step, status: Status) -> None:
+        answers = {QUESTION_NOTES: ""} if status == Status.END else None
+        record(root, step, status, answers=answers)
+
+    @pytest.mark.parametrize(
+        ("statuses", "status"),
+        [
+            ([], Status.START),
+            ([Status.START], Status.END),
+            ([Status.START, Status.END], Status.START),
+        ],
+    )
+    def test_no_warning(self, root: Path, statuses: list[Status], status: Status):
+        for previous in statuses:
+            self._record(root, Step.FEDBIOMED_NODE_PART_1, previous)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            check_status(root, Step.FEDBIOMED_NODE_PART_1, status)
+
+    @pytest.mark.parametrize(
+        ("statuses", "status", "message"),
+        [
+            ([], Status.END, "was not started"),
+            ([Status.START], Status.START, "was already started"),
+            ([Status.START, Status.END], Status.END, "was not started"),
         ],
     )
     def test_warning(
         self,
         root: Path,
-        fpath_log: Path,
+        fpath_timestamps: Path,
         statuses: list[Status],
+        status: Status,
         message: str,
     ):
-        for status in statuses[:-1]:
-            record(root, Step.GET_DATA, status)
+        for previous in statuses:
+            self._record(root, Step.FEDBIOMED_NODE_PART_1, previous)
+        content = fpath_timestamps.read_text() if statuses else None
         with pytest.warns(UserWarning, match=message):
-            record(root, Step.GET_DATA, statuses[-1])
-        assert len(_read(fpath_log)) == len(statuses)
+            check_status(root, Step.FEDBIOMED_NODE_PART_1, status)
+        # nothing is written
+        if content is None:
+            assert not fpath_timestamps.exists()
+        else:
+            assert fpath_timestamps.read_text() == content
 
-    def test_extra_columns_kept(self, root: Path, fpath_log: Path):
-        fpath_log.write_text(
-            "timestamp\tstep\tstatus\tnotes\textra\nt0\tget-data\tstart\t\tx\n"
-        )
-        record(root, Step.GET_DATA, Status.END)
-        df = _read(fpath_log)
-        assert list(df["status"]) == ["start", "end"]
-        assert list(df["extra"]) == ["x", ""]
+    def test_other_step(self, root: Path):
+        self._record(root, Step.IDP_EXTRACTION, Status.START)
+        with pytest.warns(UserWarning, match="fl_ready_dataset was not started"):
+            check_status(root, Step.FL_READY_DATASET, Status.END)
 
-    @pytest.mark.parametrize(
-        "content",
-        [
-            "",
-            "timestamp\tstep\tstatus\nt0\tget-data\tstart\n",
-            'timestamp\tstep\tstatus\tnotes\n"unclosed\n',
-        ],
-    )
-    def test_invalid_log(
-        self,
-        root: Path,
-        fpath_log: Path,
-        content: str,
-    ):
-        fpath_log.write_text(content)
-        with pytest.warns(UserWarning, match="invalid status log") as record_warnings:
-            record(root, Step.GET_DATA, Status.START)
-
-        fpaths_backup = list(fpath_log.parent.glob("status_log-*.tsv"))
-        assert len(fpaths_backup) == 1
-        assert fpaths_backup[0].read_text() == content
-        df = _read(fpath_log)
-        assert tuple(df.columns) == STATUS_LOG_COLUMNS
-        assert len(df) == 1
+    def test_invalid_timestamps_file(self, root: Path, fpath_timestamps: Path):
+        fpath_timestamps.write_text("timestamp\tstep\nt0\tidp_extraction\n")
+        with pytest.warns(UserWarning) as record_warnings:
+            check_status(root, Step.IDP_EXTRACTION, Status.START)
         # previous records are discarded, so no start/end warning
+        assert str(record_warnings[0].message).startswith("invalid file")
         assert len(record_warnings) == 1
