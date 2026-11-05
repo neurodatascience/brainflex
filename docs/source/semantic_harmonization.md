@@ -1,4 +1,4 @@
-# Phenotypic files
+# Semantic harmonization
 
 In this step, you will use the [Neurobagel annotation tool](https://annotate.neurobagel.org/) to map your dataset's phenotypic variables (age and sex) from their original naming/encoding conventions to standardized terms.
 You will then create a semantically harmonized copy of your phenotypic data, where column names and values use a **standardized vocabulary** that is shared with all other sites.

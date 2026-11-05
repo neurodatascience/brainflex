@@ -42,7 +42,7 @@ The two services are:
 
 ### Troubleshooting: disk quota error
 
-If you run out of disk space and have already tried changing the Docker data directories [as previously described](freesurfer_idps.md#troubleshooting-disk-quota-error), you can remove the FreeSurfer image downloaded in the [IDP extraction step](freesurfer_idps), as it is not needed anymore.
+If you run out of disk space and have already tried changing the Docker data directories [as previously described](idp_extraction.md#troubleshooting-disk-quota-error), you can remove the FreeSurfer image downloaded in the [IDP extraction step](idp_extraction), as it is not needed anymore.
 
 1. List your images:
 

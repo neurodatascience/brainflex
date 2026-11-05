@@ -31,7 +31,7 @@ class Step(StrEnum):
 
     IDP_EXTRACTION = "idp_extraction"
     SEMANTIC_HARMONIZATION = "semantic_harmonization"
-    FL_READY_DATA = "fl_ready_data"
+    FL_READY_DATASET = "fl_ready_dataset"
     FEDBIOMED_NODE_PART_1 = "fedbiomed_node_part_1"
     FEDBIOMED_NODE_PART_2 = "fedbiomed_node_part_2"
 
@@ -44,7 +44,7 @@ class Status(StrEnum):
 
 
 DATA_PREP_STEPS = frozenset(
-    {Step.IDP_EXTRACTION, Step.SEMANTIC_HARMONIZATION, Step.FL_READY_DATA}
+    {Step.IDP_EXTRACTION, Step.SEMANTIC_HARMONIZATION, Step.FL_READY_DATASET}
 )
 
 # questions asked at the end of a step, mapped to their allowed answers
@@ -71,7 +71,7 @@ STEP_SUMMARIES: dict[Step, str] = {
         "despite the fact that the original demographic data may have used "
         "different names or values."
     ),
-    Step.FL_READY_DATA: (
+    Step.FL_READY_DATASET: (
         "In this step, you merged the previously extracted FreeSurfer IDPs and "
         "harmonized phenotypic data into datasets formatted in a way that can be used "
         "directly by the Fed-BioMed federated learning framework. All sites "

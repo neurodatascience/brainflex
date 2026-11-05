@@ -91,7 +91,8 @@ class TestRecord:
         )
 
     @pytest.mark.parametrize(
-        "step", [Step.IDP_EXTRACTION, Step.SEMANTIC_HARMONIZATION, Step.FL_READY_DATA]
+        "step",
+        [Step.IDP_EXTRACTION, Step.SEMANTIC_HARMONIZATION, Step.FL_READY_DATASET],
     )
     def test_end_data_prep(
         self, runner: CliRunner, mock_record: MagicMock, dpath_root: Path, step: Step
@@ -256,7 +257,7 @@ class TestRecord:
         mock_record.assert_called_once()
 
     def test_end_to_end(self, runner: CliRunner, dpath_root: Path):
-        args = ["record", "fl_ready_data", "--project", str(dpath_root)]
+        args = ["record", "fl_ready_dataset", "--project", str(dpath_root)]
         args_start = [*args[:2], "start", *args[2:]]
         args_end = [*args[:2], "end", *args[2:]]
         dpath = dpath_root.resolve() / BRAINFLEX_DIRNAME
@@ -264,7 +265,7 @@ class TestRecord:
         assert result.exit_code == 0
         fpath_timestamps = dpath / TIMESTAMPS_FILENAME
         assert (
-            f"Saved timestamp for (fl_ready_data, start) to {fpath_timestamps}"
+            f"Saved timestamp for (fl_ready_dataset, start) to {fpath_timestamps}"
             in result.stdout
         )
         assert "Saved answers" not in result.stdout
@@ -272,7 +273,7 @@ class TestRecord:
         assert "WARNING" not in result.stderr
         assert result.exit_code == 0
         assert (
-            f"Saved timestamp for (fl_ready_data, end) to {fpath_timestamps}"
+            f"Saved timestamp for (fl_ready_dataset, end) to {fpath_timestamps}"
             in result.stdout
         )
         assert f"Saved answers to {dpath / STEP_SURVEY_FILENAME}" in result.stdout
@@ -281,7 +282,7 @@ class TestRecord:
         assert list(df_timestamps["status"]) == ["start", "end"]
         assert (dpath / STEP_SURVEY_FILENAME).read_text().splitlines() == [
             "step\tquestion\tanswer",
-            f"fl_ready_data\t{QUESTION_TOOLS_EASIER}\tyes",
-            f"fl_ready_data\t{QUESTION_TIME_WITHOUT_TOOLS}\t<1h",
-            f"fl_ready_data\t{QUESTION_NOTES}\tok",
+            f"fl_ready_dataset\t{QUESTION_TOOLS_EASIER}\tyes",
+            f"fl_ready_dataset\t{QUESTION_TIME_WITHOUT_TOOLS}\t<1h",
+            f"fl_ready_dataset\t{QUESTION_NOTES}\tok",
         ]

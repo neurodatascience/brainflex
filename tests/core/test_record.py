@@ -126,10 +126,10 @@ class TestRecord:
         ]
 
     def test_survey_appends_in_question_order(self, root: Path, fpath_survey: Path):
-        record(root, Step.FL_READY_DATA, Status.START)
+        record(root, Step.FL_READY_DATASET, Status.START)
         record(
             root,
-            Step.FL_READY_DATA,
+            Step.FL_READY_DATASET,
             Status.END,
             answers=dict(reversed(DATA_PREP_ANSWERS.items())),
         )
@@ -266,8 +266,8 @@ class TestCheckStatus:
 
     def test_other_step(self, root: Path):
         self._record(root, Step.IDP_EXTRACTION, Status.START)
-        with pytest.warns(UserWarning, match="fl_ready_data was not started"):
-            check_status(root, Step.FL_READY_DATA, Status.END)
+        with pytest.warns(UserWarning, match="fl_ready_dataset was not started"):
+            check_status(root, Step.FL_READY_DATASET, Status.END)
 
     def test_invalid_timestamps_file(self, root: Path, fpath_timestamps: Path):
         fpath_timestamps.write_text("timestamp\tstep\nt0\tidp_extraction\n")

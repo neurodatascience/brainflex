@@ -25,8 +25,8 @@ caption: Instructions
 ---
 prerequisites
 initial_setup
-freesurfer_idps
-phenotypic_files
+idp_extraction
+semantic_harmonization
 fl_ready_dataset
 fedbiomed_node_part_1
 fedbiomed_node_part_2

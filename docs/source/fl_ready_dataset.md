@@ -8,7 +8,7 @@ In this step, you will combine the standardized IDPs and the harmonized phenotyp
 ## Record start time
 
 ```bash
-brainflex record fl_ready_data start
+brainflex record fl_ready_dataset start
 ```
 
 ## Pipeline installation
@@ -67,5 +67,5 @@ nipoppy_study/derivatives/nipoppy2fedbiomed
 ## Record end time and answer questions
 
 ```bash
-brainflex record fl_ready_data end
+brainflex record fl_ready_dataset end
 ```

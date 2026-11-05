@@ -1,4 +1,4 @@
-# FreeSurfer IDPs
+# IDP extraction
 
 In this step, you will use a Nipoppy pipeline to extract imaging-derived phenotypes (IDPs), such as cortical thickness and subcortical volumes, from the FreeSurfer outputs that came with your dataset.
 Because every site runs the same containerized pipelines with the same configuration, **the resulting IDPs are standardized across the federation**.
