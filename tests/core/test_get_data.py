@@ -188,6 +188,21 @@ class TestGetData:
         with pytest.raises(ValueError, match="No participant IDs"):
             get_data(root, DATASET_ID)
 
+    def test_participants_without_prefix(
+        self, mock_s3: dict[tuple[str, str], bytes], root: Path
+    ):
+        mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
+            b"participant_id\tage\n01\t20\n02\t30\nsub-03\t40\n"
+        )
+        dpath_study = get_data(root, DATASET_ID)
+        pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
+        assert pheno == (
+            "participant_id\tsession_id\tage\n"
+            "sub-01\tses-unnamed\t20\n"
+            "sub-02\tses-unnamed\t30\n"
+            "sub-03\t\t40\n"
+        )
+
     def test_no_participants_json(
         self, mock_s3: dict[tuple[str, str], bytes], root: Path
     ):
