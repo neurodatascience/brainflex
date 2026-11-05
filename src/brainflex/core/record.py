@@ -14,7 +14,7 @@ from brainflex.utils.constants import (
     COL_STEP,
     COL_TIMESTAMP,
     QUESTION_NOTES,
-    QUESTION_TIME_WITHOUT_TOOLS,
+    QUESTION_TIME_WITHOUT_TOOL_TEMPLATE,
     QUESTION_TOOL_EASIER_TEMPLATE,
     STEP_SURVEY_COLUMNS,
     STEP_SURVEY_FILENAME,
@@ -89,7 +89,7 @@ def get_tools_easier_question(step: Step) -> str:
 
 def get_time_without_tools_question(step: Step) -> str:
     """Return the question about how long a data preparation step would have taken."""
-    return QUESTION_TIME_WITHOUT_TOOLS.format(tool=STEP_TOOLS[step])
+    return QUESTION_TIME_WITHOUT_TOOL_TEMPLATE.format(tool=STEP_TOOLS[step])
 
 
 def get_step_questions(step: Step) -> dict[str, tuple[str, ...] | None]:
