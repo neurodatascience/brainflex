@@ -22,7 +22,7 @@ extensions = [
     "sphinx_togglebutton",
 ]
 
-exclude_patterns = []
+exclude_patterns = ["_includes"]
 
 nitpicky = True
 

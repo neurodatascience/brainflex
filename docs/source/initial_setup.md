@@ -4,7 +4,7 @@
 
 ### Clone the starting repository
 
-Clone the [`brainflex-node`](https://github.com/neurodatascience/brainflex-node) repository:
+Clone and enter the [`brainflex-node`](https://github.com/neurodatascience/brainflex-node) repository:
 
 ```bash
 git clone https://github.com/neurodatascience/brainflex-node
@@ -14,6 +14,8 @@ cd brainflex-node
 ### Create virtual environment and install Python dependencies
 
 #### With `uv`
+
+To install `uv`: [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/) (`sudo` privileges **not** needed).
 
 ```bash
 uv venv --python 3.14
@@ -61,7 +63,7 @@ brainflex initial-survey
 ## Node configuration
 
 ```{attention}
-`config.env` and `.env` are Git-ignored and should never be shared.
+The content of `config.env` and `.env` should not be openly shared.
 ```
 
 ### `config.env` file
@@ -69,7 +71,7 @@ brainflex initial-survey
 Put the `config.env` file that was shared with you in the `vpn_config/` directory:
 
 ```bash
-mv <PATH_TO_CONFIG_ENV> vpn_config/config.env
+mv <PATH_TO_CONFIG_ENV_FILE> vpn_config/config.env
 ```
 
 ### `.env` file
@@ -104,7 +106,7 @@ FBM_CONTAINER_VERSION_TAG=6.4.1
 FBM_CONTAINER_INSTANCE_ID=default
 
 # Fed-BioMed node name, as shown to the researcher
-FBM_NODE_NAME=mcgill
+FBM_NODE_NAME=mcgill-ds123456
 
 # Host user and group owning the files in `fbm-node`
 # Set to the output of `id -u` and `id -g`. If unset, files are owned by UID/GID 2101
@@ -133,10 +135,16 @@ FBM_SECURITY_ALLOW_FEDERATED_ANALYTICS=True
 
 ## Data download
 
-Download the OpenNeuro dataset assigned to your site, replacing `<DATASET_ID>` with its ID (beginning with `ds`):
+Download the OpenNeuro dataset assigned to your site, replacing `<DATASET_ID>` with its ID.
+Your dataset ID is the second part of the `FBM_NODE_NAME` variable you just set in your `.env` file, beginning with `ds` (e.g. `ds123456` in the example `.env` file above).
 
 ```bash
 brainflex get-data <DATASET_ID>
 ```
 
-This creates a minimal Nipoppy study in `nipoppy_study` that contains all the data needed for the federated learning experiment.
+The command may run for a few (maybe 3-5) minutes.
+It will create a minimal Nipoppy study in a new directory, `nipoppy_study`, that contains all the data needed for the federated learning experiment.
+
+```{note}
+To save disk space and download time, only the files needed for this experiment are downloaded: the raw imaging files are empty placeholders, and the FreeSurfer outputs only include the `stats` and `scripts` directories.
+```
