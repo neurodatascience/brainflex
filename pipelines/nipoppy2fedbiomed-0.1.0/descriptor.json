@@ -3,7 +3,7 @@
     "description": "Export tabular data from a Nipoppy study for a Fed-BioMed node.",
     "tool-version": "0.1.0",
     "schema-version": "0.5",
-    "command-line": "python [SCRIPT_PATH] [NIPOPPY_ROOT] [OUTPUT_DIR] [PHENOTYPE] [DERIVATIVE] [TAG] [NAME] [DESCRIPTION] [DATASET_PATH] [HELP]",
+    "command-line": "python [SCRIPT_PATH] [NIPOPPY_ROOT] [OUTPUT_DIR] [PHENOTYPE] [DERIVATIVE] [TAG] [NAME] [DESCRIPTION] [DATASET_PATH] [OUTLIER_THRESHOLD] [HELP]",
     "inputs": [
         {
             "id": "script_path",
@@ -84,6 +84,16 @@
             "description": "Dataset path written to the JSON file, as seen by the Fed-BioMed node. Can start with an environment variable of the node (e.g. $NIPOPPY_ROOT/...). Default: absolute path of the CSV file.",
             "optional": true,
             "command-line-flag": "--dataset-path"
+        },
+        {
+            "id": "outlier_threshold",
+            "name": "outlier_threshold",
+            "type": "Number",
+            "value-key": "[OUTLIER_THRESHOLD]",
+            "description": "Remove rows where any IDP (derivative) value is below Q1 - K*IQR or above Q3 + K*IQR. Default: no outlier removal.",
+            "optional": true,
+            "minimum": 0,
+            "command-line-flag": "--outlier-threshold"
         },
         {
             "id": "help",

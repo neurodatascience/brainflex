@@ -12,5 +12,6 @@
         "age"
     ],
     "name": "age",
-    "dataset_path": "$NIPOPPY_ROOT/derivatives/nipoppy2fedbiomed/0.1.0/output/age/dataset.csv"
+    "dataset_path": "$NIPOPPY_ROOT/derivatives/nipoppy2fedbiomed/0.1.0/output/age/dataset.csv",
+    "outlier_threshold": 3
 }

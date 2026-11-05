@@ -117,6 +117,18 @@ def output_dir(tmp_path: Path) -> Path:
     return tmp_path / "output"
 
 
+@pytest.fixture
+def df() -> pd.DataFrame:
+    # Q1 = 2, Q3 = 4, IQR = 2 for each column
+    return pd.DataFrame(
+        {
+            "idp1": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "idp2": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "pheno": [1.0, 2.0, 3.0, 4.0, 5.0],
+        }
+    )
+
+
 class TestPipelineBundle:
     def test_validate(self):
         result = subprocess.run(
@@ -154,6 +166,31 @@ class TestParseDerivative:
     def test_invalid(self, module: ModuleType, value: str):
         with pytest.raises(argparse.ArgumentTypeError, match="expected PIPELINE_NAME"):
             module._parse_derivative(value)
+
+
+class TestGetOutlierMask:
+    def test_no_outliers(self, module: ModuleType, df: pd.DataFrame):
+        # fences at -4 and 10
+        mask = module._get_outlier_mask(df, ["idp1", "idp2"], 3)
+        assert mask.tolist() == [False] * 5
+
+    def test_fence_not_outlier(self, module: ModuleType, df: pd.DataFrame):
+        # fences at 1 and 5: values on the fence are kept
+        mask = module._get_outlier_mask(df, ["idp1", "idp2"], 0.5)
+        assert mask.tolist() == [False] * 5
+
+    @pytest.mark.parametrize("value", [-100.0, 100.0])
+    def test_outlier_in_any_column(
+        self, module: ModuleType, df: pd.DataFrame, value: float
+    ):
+        df.loc[2, "idp2"] = value
+        mask = module._get_outlier_mask(df, ["idp1", "idp2"], 3)
+        assert mask.tolist() == [False, False, True, False, False]
+
+    def test_ignores_other_columns(self, module: ModuleType, df: pd.DataFrame):
+        df.loc[2, "pheno"] = 100.0
+        mask = module._get_outlier_mask(df, ["idp1", "idp2"], 3)
+        assert mask.tolist() == [False] * 5
 
 
 class TestNipoppy2fedbiomed:
@@ -279,6 +316,43 @@ class TestNipoppy2fedbiomed:
         assert df["nb:Sex"].tolist() == [0, 0]
         assert "Dropped 1 rows with missing values" in capsys.readouterr().out
 
+    def test_outlier_removal(
+        self,
+        module: ModuleType,
+        nipoppy_root: Path,
+        output_dir: Path,
+        capsys: pytest.CaptureFixture,
+    ):
+        # with threshold 0, only values within [Q1, Q3] are kept
+        fpath_csv, _ = module.nipoppy2fedbiomed(
+            nipoppy_root,
+            output_dir,
+            ["nb:Age", "nb:Sex"],
+            DERIVATIVES,
+            ["tag"],
+            outlier_threshold=0,
+        )
+        df = pd.read_csv(fpath_csv)
+        assert df["nb:Age"].tolist() == [30.0]
+        assert df["nb:Sex"].tolist() == [1]
+        assert "Dropped 2 rows with outlier IDP values" in capsys.readouterr().out
+
+    def test_outlier_threshold_negative(
+        self, module: ModuleType, nipoppy_root: Path, output_dir: Path
+    ):
+        with pytest.raises(ValueError, match="must be non-negative"):
+            module.nipoppy2fedbiomed(
+                nipoppy_root, output_dir, [], DERIVATIVES, ["tag"], outlier_threshold=-1
+            )
+
+    def test_outlier_threshold_without_derivatives(
+        self, module: ModuleType, nipoppy_root: Path, output_dir: Path
+    ):
+        with pytest.raises(ValueError, match="requires at least one derivative"):
+            module.nipoppy2fedbiomed(
+                nipoppy_root, output_dir, ["nb:Age"], [], ["tag"], outlier_threshold=3
+            )
+
     def test_all_missing(
         self, module: ModuleType, nipoppy_root: Path, output_dir: Path
     ):
@@ -322,6 +396,7 @@ class TestMain:
                 "my-dataset",
                 "--dataset-path",
                 "$NIPOPPY_ROOT/output/dataset.csv",
+                *("--outlier-threshold", "3"),
             ]
         )
         assert "Wrote 3 rows" in capsys.readouterr().out

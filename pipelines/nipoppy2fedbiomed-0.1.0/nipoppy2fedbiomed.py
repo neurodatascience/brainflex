@@ -6,6 +6,10 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 MIN_NIPOPPY_VERSION = "0.4.3"
 FNAME_CSV = "dataset.csv"
@@ -90,7 +94,29 @@ def _get_parser() -> argparse.ArgumentParser:
             " Default: absolute path of the CSV file."
         ),
     )
+    parser.add_argument(
+        "--outlier-threshold",
+        type=float,
+        metavar="K",
+        help=(
+            "Remove rows where any IDP (derivative) value is below Q1 - K*IQR"
+            " or above Q3 + K*IQR. Default: no outlier removal."
+        ),
+    )
     return parser
+
+
+def _get_outlier_mask(
+    df: "pd.DataFrame", columns: list[str], threshold: float
+) -> "pd.Series":
+    """Return a boolean Series that is True for rows with any outlier value."""
+    values = df[columns]
+    q1 = values.quantile(0.25)
+    q3 = values.quantile(0.75)
+    iqr = q3 - q1
+    return ((values < q1 - threshold * iqr) | (values > q3 + threshold * iqr)).any(
+        axis="columns"
+    )
 
 
 def nipoppy2fedbiomed(
@@ -102,6 +128,7 @@ def nipoppy2fedbiomed(
     name: str | None = None,
     description: str | None = None,
     dataset_path: str | None = None,
+    outlier_threshold: float | None = None,
 ) -> tuple[Path, Path]:
     """Write the CSV dataset and its Fed-BioMed description.
 
@@ -109,6 +136,13 @@ def nipoppy2fedbiomed(
     """
     if not (phenotypes or derivatives):
         raise ValueError("At least one phenotype or derivative must be specified")
+    if outlier_threshold is not None:
+        if outlier_threshold < 0:
+            raise ValueError(
+                f"Outlier threshold must be non-negative, got {outlier_threshold}"
+            )
+        if not derivatives:
+            raise ValueError("Outlier removal requires at least one derivative")
     nipoppy_root = nipoppy_root.resolve()
     name = name or nipoppy_root.name
     if description is None:
@@ -129,6 +163,17 @@ def nipoppy2fedbiomed(
         raise ValueError(f"No rows without missing values in {nipoppy_root}")
     if n_dropped := n_rows - len(df):
         print(f"Dropped {n_dropped} rows with missing values")
+    if outlier_threshold is not None:
+        idp_columns = [column for column in df.columns if column not in phenotypes]
+        n_rows = len(df)
+        df = df.loc[~_get_outlier_mask(df, idp_columns, outlier_threshold)]
+        if df.empty:
+            raise ValueError(f"No rows left after outlier removal in {nipoppy_root}")
+        if n_dropped := n_rows - len(df):
+            print(
+                f"Dropped {n_dropped} rows with outlier IDP values"
+                f" (threshold: {outlier_threshold})"
+            )
     if TERMURL_SEX in df.columns:
         df[TERMURL_SEX] = df[TERMURL_SEX].astype(int)
 
@@ -167,6 +212,7 @@ def main(argv: list[str] | None = None) -> None:
             name=args.name,
             description=args.description,
             dataset_path=args.dataset_path,
+            outlier_threshold=args.outlier_threshold,
         )
     except (ValueError, FileNotFoundError) as e:
         sys.exit(f"Error: {e}")
