@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import ClassVar
 
 import pandas as pd
 import pytest
@@ -112,6 +113,23 @@ def nipoppy_root(tmp_path: Path) -> Path:
     return nipoppy_root
 
 
+def _write_thickness(nipoppy_root: Path, values: tuple[float, float, float]) -> None:
+    """Overwrite the lh_insula thickness values of participants 01, 02 and 03."""
+    _write_tsv(
+        nipoppy_root
+        / "derivatives"
+        / "freesurfer"
+        / FS_VERSION
+        / "idp"
+        / "fs_stats-0.2.0"
+        / f"fs{FS_VERSION}-aparc.DKTatlas-thickness.tsv",
+        [
+            {"participant_id": f"sub-{p}", "session_id": "ses-BL", "lh_insula": v}
+            for p, v in zip(("01", "02", "03"), values)
+        ],
+    )
+
+
 @pytest.fixture
 def output_dir(tmp_path: Path) -> Path:
     return tmp_path / "output"
@@ -191,6 +209,37 @@ class TestGetOutlierMask:
         df.loc[2, "pheno"] = 100.0
         mask = module._get_outlier_mask(df, ["idp1", "idp2"], 3)
         assert mask.tolist() == [False] * 5
+
+    def test_ignores_zero_iqr_columns(self, module: ModuleType, df: pd.DataFrame):
+        # Q1 = Q3 = 0: every non-zero value would be outside the fences
+        df["idp1"] = [0.0, 0.0, 0.0, 0.0, 1.0]
+        mask = module._get_outlier_mask(df, ["idp1", "idp2"], 3)
+        assert mask.tolist() == [False] * 5
+
+
+class TestMatchColumns:
+    COLUMNS: ClassVar[list[str]] = [
+        "lh_insula_thickness",
+        "rh_insula_thickness",
+        "Left-Hippocampus",
+    ]
+
+    def test_all_by_default(self, module: ModuleType):
+        assert module._match_columns(self.COLUMNS, None, None) == self.COLUMNS
+
+    def test_patterns(self, module: ModuleType):
+        assert module._match_columns(self.COLUMNS, ["*_thickness"], None) == [
+            "lh_insula_thickness",
+            "rh_insula_thickness",
+        ]
+
+    def test_exclude_patterns(self, module: ModuleType):
+        assert module._match_columns(
+            self.COLUMNS, ["*_thickness", "Left-*"], ["rh_*"]
+        ) == ["lh_insula_thickness", "Left-Hippocampus"]
+
+    def test_case_sensitive(self, module: ModuleType):
+        assert module._match_columns(self.COLUMNS, ["left-*"], None) == []
 
 
 class TestNipoppy2fedbiomed:
@@ -337,6 +386,104 @@ class TestNipoppy2fedbiomed:
         assert df["nb:Sex"].tolist() == [1]
         assert "Dropped 2 rows with outlier IDP values" in capsys.readouterr().out
 
+    @pytest.mark.parametrize(
+        "outlier_columns,outlier_exclude_columns,expected_ages",
+        [
+            # Left-Hippocampus (4000, 4100, 4200): 01 and 03 are outliers
+            (["Left-*"], None, [30.0]),
+            # lh_insula (2.6, 2.5, 2.7): 02 and 03 are outliers
+            (["lh_*"], None, [20.5]),
+            (["*"], ["lh_*"], [30.0]),
+            (None, ["Left-*"], [20.5]),
+        ],
+    )
+    def test_outlier_columns(
+        self,
+        module: ModuleType,
+        nipoppy_root: Path,
+        output_dir: Path,
+        outlier_columns: list[str] | None,
+        outlier_exclude_columns: list[str] | None,
+        expected_ages: list[float],
+    ):
+        _write_thickness(nipoppy_root, (2.6, 2.5, 2.7))
+        # with threshold 0, only values within [Q1, Q3] are kept
+        fpath_csv, _ = module.nipoppy2fedbiomed(
+            nipoppy_root,
+            output_dir,
+            ["nb:Age", "nb:Sex"],
+            DERIVATIVES,
+            ["tag"],
+            outlier_threshold=0,
+            outlier_columns=outlier_columns,
+            outlier_exclude_columns=outlier_exclude_columns,
+        )
+        df = pd.read_csv(fpath_csv)
+        assert df["nb:Age"].tolist() == expected_ages
+        # excluded columns are still in the output
+        assert "lh_insula" in df.columns
+
+    def test_outlier_zero_iqr(
+        self,
+        module: ModuleType,
+        nipoppy_root: Path,
+        output_dir: Path,
+        capsys: pytest.CaptureFixture,
+    ):
+        _write_thickness(nipoppy_root, (2.5, 2.5, 2.5))
+        fpath_csv, _ = module.nipoppy2fedbiomed(
+            nipoppy_root,
+            output_dir,
+            ["nb:Age", "nb:Sex"],
+            DERIVATIVES,
+            ["tag"],
+            outlier_threshold=0,
+        )
+        assert pd.read_csv(fpath_csv)["nb:Age"].tolist() == [30.0]
+        out = capsys.readouterr().out
+        assert (
+            "Skipped 1 columns with zero IQR in outlier removal: ['lh_insula']" in out
+        )
+        assert "Dropped 2 rows with outlier IDP values" in out
+
+    def test_outlier_columns_no_match(
+        self, module: ModuleType, nipoppy_root: Path, output_dir: Path
+    ):
+        with pytest.raises(ValueError, match="No IDP columns match"):
+            module.nipoppy2fedbiomed(
+                nipoppy_root,
+                output_dir,
+                ["nb:Age"],
+                DERIVATIVES,
+                ["tag"],
+                outlier_threshold=3,
+                outlier_columns=["Left-*"],
+                outlier_exclude_columns=["*Hippocampus"],
+            )
+
+    @pytest.mark.parametrize(
+        "outlier_columns,outlier_exclude_columns",
+        [(["Left-*"], None), (None, ["Left-*"])],
+    )
+    def test_outlier_columns_without_threshold(
+        self,
+        module: ModuleType,
+        nipoppy_root: Path,
+        output_dir: Path,
+        outlier_columns: list[str] | None,
+        outlier_exclude_columns: list[str] | None,
+    ):
+        with pytest.raises(ValueError, match="require an outlier threshold"):
+            module.nipoppy2fedbiomed(
+                nipoppy_root,
+                output_dir,
+                ["nb:Age"],
+                DERIVATIVES,
+                ["tag"],
+                outlier_columns=outlier_columns,
+                outlier_exclude_columns=outlier_exclude_columns,
+            )
+
     def test_outlier_threshold_negative(
         self, module: ModuleType, nipoppy_root: Path, output_dir: Path
     ):
@@ -397,6 +544,9 @@ class TestMain:
                 "--dataset-path",
                 "$NIPOPPY_ROOT/output/dataset.csv",
                 *("--outlier-threshold", "3"),
+                *("--outlier-column", "Left-*"),
+                *("--outlier-column", "lh_*"),
+                *("--outlier-exclude-column", "*_MeanThickness"),
             ]
         )
         assert "Wrote 3 rows" in capsys.readouterr().out

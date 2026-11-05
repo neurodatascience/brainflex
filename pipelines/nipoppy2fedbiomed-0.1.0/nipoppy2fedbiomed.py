@@ -3,6 +3,7 @@
 """Export tabular data from a Nipoppy study for a Fed-BioMed node."""
 
 import argparse
+import fnmatch
 import json
 import sys
 from pathlib import Path
@@ -100,7 +101,28 @@ def _get_parser() -> argparse.ArgumentParser:
         metavar="K",
         help=(
             "Remove rows where any IDP (derivative) value is below Q1 - K*IQR"
-            " or above Q3 + K*IQR. Default: no outlier removal."
+            " or above Q3 + K*IQR. Columns with zero IQR are ignored."
+            " Default: no outlier removal."
+        ),
+    )
+    parser.add_argument(
+        "--outlier-column",
+        dest="outlier_columns",
+        action="append",
+        metavar="PATTERN",
+        help=(
+            "fnmatch pattern of IDP columns to check for outliers. Can be repeated."
+            " Default: all IDP columns."
+        ),
+    )
+    parser.add_argument(
+        "--outlier-exclude-column",
+        dest="outlier_exclude_columns",
+        action="append",
+        metavar="PATTERN",
+        help=(
+            "fnmatch pattern of IDP columns to never check for outliers,"
+            " even if they match --outlier-column. Can be repeated."
         ),
     )
     return parser
@@ -109,14 +131,42 @@ def _get_parser() -> argparse.ArgumentParser:
 def _get_outlier_mask(
     df: "pd.DataFrame", columns: list[str], threshold: float
 ) -> "pd.Series":
-    """Return a boolean Series that is True for rows with any outlier value."""
+    """Return a boolean Series that is True for rows with any outlier value.
+
+    Columns with zero IQR are ignored.
+    """
     values = df[columns]
     q1 = values.quantile(0.25)
     q3 = values.quantile(0.75)
     iqr = q3 - q1
+    nonzero = iqr != 0
+    values, q1, q3, iqr = values.loc[:, nonzero], q1[nonzero], q3[nonzero], iqr[nonzero]
     return ((values < q1 - threshold * iqr) | (values > q3 + threshold * iqr)).any(
         axis="columns"
     )
+
+
+def _match_columns(
+    columns: list[str], patterns: list[str] | None, exclude_patterns: list[str] | None
+) -> list[str]:
+    """Return the columns matching any pattern (all if None) and no exclude pattern."""
+
+    def _matches(column: str, patterns: list[str]) -> bool:
+        return any(fnmatch.fnmatchcase(column, pattern) for pattern in patterns)
+
+    return [
+        column
+        for column in columns
+        if (patterns is None or _matches(column, patterns))
+        and not _matches(column, exclude_patterns or [])
+    ]
+
+
+def _get_zero_iqr_columns(df: "pd.DataFrame", columns: list[str]) -> list[str]:
+    """Return the columns whose IQR is zero."""
+    values = df[columns]
+    iqr = values.quantile(0.75) - values.quantile(0.25)
+    return [column for column in columns if iqr[column] == 0]
 
 
 def nipoppy2fedbiomed(
@@ -129,6 +179,8 @@ def nipoppy2fedbiomed(
     description: str | None = None,
     dataset_path: str | None = None,
     outlier_threshold: float | None = None,
+    outlier_columns: list[str] | None = None,
+    outlier_exclude_columns: list[str] | None = None,
 ) -> tuple[Path, Path]:
     """Write the CSV dataset and its Fed-BioMed description.
 
@@ -143,6 +195,8 @@ def nipoppy2fedbiomed(
             )
         if not derivatives:
             raise ValueError("Outlier removal requires at least one derivative")
+    elif outlier_columns or outlier_exclude_columns:
+        raise ValueError("Outlier columns require an outlier threshold")
     nipoppy_root = nipoppy_root.resolve()
     name = name or nipoppy_root.name
     if description is None:
@@ -164,7 +218,21 @@ def nipoppy2fedbiomed(
     if n_dropped := n_rows - len(df):
         print(f"Dropped {n_dropped} rows with missing values")
     if outlier_threshold is not None:
-        idp_columns = [column for column in df.columns if column not in phenotypes]
+        idp_columns = _match_columns(
+            [column for column in df.columns if column not in phenotypes],
+            outlier_columns,
+            outlier_exclude_columns,
+        )
+        if not idp_columns:
+            raise ValueError(
+                "No IDP columns match the outlier column patterns"
+                f" {outlier_columns} (excluding {outlier_exclude_columns})"
+            )
+        if zero_iqr_columns := _get_zero_iqr_columns(df, idp_columns):
+            print(
+                f"Skipped {len(zero_iqr_columns)} columns with zero IQR in outlier"
+                f" removal: {zero_iqr_columns}"
+            )
         n_rows = len(df)
         df = df.loc[~_get_outlier_mask(df, idp_columns, outlier_threshold)]
         if df.empty:
@@ -213,6 +281,8 @@ def main(argv: list[str] | None = None) -> None:
             description=args.description,
             dataset_path=args.dataset_path,
             outlier_threshold=args.outlier_threshold,
+            outlier_columns=args.outlier_columns,
+            outlier_exclude_columns=args.outlier_exclude_columns,
         )
     except (ValueError, FileNotFoundError) as e:
         sys.exit(f"Error: {e}")
