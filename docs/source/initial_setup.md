@@ -135,8 +135,10 @@ FBM_SECURITY_ALLOW_FEDERATED_ANALYTICS=True
 
 ## Data download
 
+```{note}
 In the interest of time, we will use open-access imaging data that has already been preprocessed with FreeSurfer.
 In the future, we may propose a follow-up experiment where a subset of interested participating nodes process either OpenNeuro raw BIDS data or their own data with FreeSurfer using Nipoppy.
+```
 
 Download the OpenNeuro dataset assigned to your site, replacing `<DATASET_ID>` with its ID.
 Your dataset ID is the second part of the `FBM_NODE_NAME` variable you just set in your `.env` file, beginning with `ds` (e.g. `ds123456` in the example `.env` file above).
