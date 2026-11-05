@@ -4,11 +4,17 @@
 
 ### Clone the starting repository
 
-Clone and enter the [`brainflex-node`](https://github.com/neurodatascience/brainflex-node) repository:
+Clone the [`brainflex-node`](https://github.com/neurodatascience/brainflex-node) repository and enter it:
 
 ```bash
-git clone https://github.com/neurodatascience/brainflex-node
+git clone --branch v0.1.0 https://github.com/neurodatascience/brainflex-node
 cd brainflex-node
+```
+
+Create a new branch so that any changes you commit are not lost. This is optional but useful if you plan to use Git local version control.
+
+```bash
+git switch -c work  # or any other branch name
 ```
 
 ### Create virtual environment and install Python dependencies
