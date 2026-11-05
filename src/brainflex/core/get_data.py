@@ -199,8 +199,14 @@ def _write_pheno(layout: DatasetLayout, session_ids: dict[str, str]) -> None:
         rows = list(reader)
 
     for row in rows:
-        if not row[COL_PARTICIPANT_ID].startswith(BIDS_SUBJECT_PREFIX):
-            row[COL_PARTICIPANT_ID] = BIDS_SUBJECT_PREFIX + row[COL_PARTICIPANT_ID]
+        participant_id = row[COL_PARTICIPANT_ID]
+        if not participant_id.startswith(BIDS_SUBJECT_PREFIX):
+            row[COL_PARTICIPANT_ID] = BIDS_SUBJECT_PREFIX + participant_id
+            warnings.warn(
+                f"Prepended {BIDS_SUBJECT_PREFIX!r} to participant ID"
+                f" {participant_id!r} in {PARTICIPANTS_FILENAME}",
+                stacklevel=3,
+            )
 
     fieldnames = [COL_PARTICIPANT_ID, COL_SESSION_ID] + [
         col for col in fieldnames if col not in (COL_PARTICIPANT_ID, COL_SESSION_ID)

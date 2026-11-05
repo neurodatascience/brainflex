@@ -183,7 +183,7 @@ class TestGetData:
         self, mock_s3: dict[tuple[str, str], bytes], root: Path
     ):
         mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
-            b"participant_id\tage\nSZ_0113\t25\n"
+            b"participant_id\tage\nsub-SZ0113\t25\n"
         )
         with pytest.raises(ValueError, match="No participant IDs"):
             get_data(root, DATASET_ID)
@@ -194,7 +194,14 @@ class TestGetData:
         mock_s3[(OPENNEURO_BUCKET, f"{DATASET_ID}/participants.tsv")] = (
             b"participant_id\tage\n01\t20\n02\t30\nsub-03\t40\n"
         )
-        dpath_study = get_data(root, DATASET_ID)
+        with pytest.warns(UserWarning) as record_warnings:
+            dpath_study = get_data(root, DATASET_ID)
+        assert [
+            str(w.message) for w in record_warnings if "Prepended" in str(w.message)
+        ] == [
+            "Prepended 'sub-' to participant ID '01' in participants.tsv",
+            "Prepended 'sub-' to participant ID '02' in participants.tsv",
+        ]
         pheno = (dpath_study / "tabular" / "pheno.tsv").read_text()
         assert pheno == (
             "participant_id\tsession_id\tage\n"
