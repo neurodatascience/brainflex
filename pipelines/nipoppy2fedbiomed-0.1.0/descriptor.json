@@ -3,7 +3,7 @@
     "description": "Export tabular data from a Nipoppy study for a Fed-BioMed node.",
     "tool-version": "0.1.0",
     "schema-version": "0.5",
-    "command-line": "python [SCRIPT_PATH] [NIPOPPY_ROOT] [OUTPUT_DIR] [PHENOTYPE] [DERIVATIVE] [TAG] [NAME] [DESCRIPTION] [DATASET_PATH] [OUTLIER_THRESHOLD] [HELP]",
+    "command-line": "python [SCRIPT_PATH] [NIPOPPY_ROOT] [OUTPUT_DIR] [PHENOTYPE] [DERIVATIVE] [TAG] [NAME] [DESCRIPTION] [DATASET_PATH] [OUTLIER_THRESHOLD] [OUTLIER_COLUMNS] [OUTLIER_EXCLUDE_COLUMNS] [HELP]",
     "inputs": [
         {
             "id": "script_path",
@@ -90,10 +90,32 @@
             "name": "outlier_threshold",
             "type": "Number",
             "value-key": "[OUTLIER_THRESHOLD]",
-            "description": "Remove rows where any IDP (derivative) value is below Q1 - K*IQR or above Q3 + K*IQR. Default: no outlier removal.",
+            "description": "Remove rows where any IDP (derivative) value is below Q1 - K*IQR or above Q3 + K*IQR. Columns with zero IQR are ignored. Default: no outlier removal.",
             "optional": true,
             "minimum": 0,
             "command-line-flag": "--outlier-threshold"
+        },
+        {
+            "id": "outlier_columns",
+            "name": "outlier_columns",
+            "type": "String",
+            "value-key": "[OUTLIER_COLUMNS]",
+            "description": "fnmatch pattern of IDP columns to check for outliers. Can be repeated. Default: all IDP columns.",
+            "optional": true,
+            "list": true,
+            "list-separator": " --outlier-column ",
+            "command-line-flag": "--outlier-column"
+        },
+        {
+            "id": "outlier_exclude_columns",
+            "name": "outlier_exclude_columns",
+            "type": "String",
+            "value-key": "[OUTLIER_EXCLUDE_COLUMNS]",
+            "description": "fnmatch pattern of IDP columns to never check for outliers, even if they match outlier_columns. Can be repeated.",
+            "optional": true,
+            "list": true,
+            "list-separator": " --outlier-exclude-column ",
+            "command-line-flag": "--outlier-exclude-column"
         },
         {
             "id": "help",

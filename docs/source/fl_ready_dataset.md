@@ -13,11 +13,11 @@ brainflex record fl_ready_dataset start
 
 ## Pipeline installation
 
-Install the [Nipoppy-to-Fed-BioMed](https://zenodo.org/records/23988781) conversion pipeline.
+Install the [Nipoppy-to-Fed-BioMed](https://zenodo.org/records/23992846) conversion pipeline.
 This pipeline was written for this FL experiment specifically.
 
 ```bash
-nipoppy pipeline install 23988781 --study nipoppy_study
+nipoppy pipeline install 23992846 --study nipoppy_study
 ```
 
 The pipeline should now be listed when you run:

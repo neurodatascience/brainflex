@@ -13,5 +13,30 @@
     ],
     "name": "sex",
     "dataset_path": "$NIPOPPY_ROOT/derivatives/nipoppy2fedbiomed/0.1.0/output/sex/dataset.csv",
-    "outlier_threshold": 3
+    "outlier_threshold": 3,
+    "outlier_columns": [
+        "*_thickness",
+        "EstimatedTotalIntraCranialVol",
+        "Left-Lateral-Ventricle",
+        "Left-Thalamus",
+        "Left-Caudate",
+        "Left-Putamen",
+        "Left-Pallidum",
+        "Left-Hippocampus",
+        "Left-Amygdala",
+        "Left-Accumbens-area",
+        "Right-Lateral-Ventricle",
+        "Right-Thalamus",
+        "Right-Caudate",
+        "Right-Putamen",
+        "Right-Pallidum",
+        "Right-Hippocampus",
+        "Right-Amygdala",
+        "Right-Accumbens-area"
+    ],
+    "outlier_exclude_columns": [
+        "lh_MeanThickness_thickness",
+        "rh_MeanThickness_thickness",
+        "rh_temporalpole_thickness"
+    ]
 }
