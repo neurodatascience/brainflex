@@ -159,8 +159,17 @@ configure_wireguard() {
         exit 1
     fi
 
+    # MTU for the wireguard interface
+    local mtu=${VPN_MTU:-1280}
+    if ! [[ "$mtu" =~ ^[0-9]+$ ]]
+    then
+        echo "CRITICAL: VPN_MTU='$mtu' is not a positive integer"
+        exit 1
+    fi
+
     # activate and set mtu
-    ip link set mtu 1420 up dev wg0
+    echo "info: setting wireguard interface MTU to '$mtu'"
+    ip link set mtu "$mtu" up dev wg0
     if [ "$?" -ne 0 ]
     then
         echo "CRITICAL: could not activate wireguard interface"
