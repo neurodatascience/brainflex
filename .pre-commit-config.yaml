@@ -1,6 +1,11 @@
 ---
+# To use to configure behavior of pre-commit ci
+ci:
+    autoupdate_schedule: monthly
+
 # vendored from Fed-BioMed, kept as close to upstream as possible
 exclude: ^docker/vpn-server/vpn/
+
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
