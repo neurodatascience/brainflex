@@ -7,7 +7,7 @@
 Clone and enter the [`brainflex-node`](https://github.com/neurodatascience/brainflex-node) repository:
 
 ```bash
-git clone --branch v0.1.0 https://github.com/neurodatascience/brainflex-node
+git clone --branch v0.1.1 https://github.com/neurodatascience/brainflex-node
 cd brainflex-node
 ```
 
