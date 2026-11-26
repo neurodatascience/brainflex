@@ -36,13 +36,45 @@ git describe --tags
 If you have no commits of your own, this prints `|node_version|`.
 If you merged into a branch that had your own commits, it prints something like `|node_version|-2-gabc1234`, which is also fine.
 
-## Update Python dependencies
+### Troubleshooting: uncommitted changes
 
-With your virtual environment (or `conda` environment) activated, reinstall the dependencies in case they changed:
+If you edited files tracked by Git (e.g. `docker-compose.yml`), the update stops with an error like:
+
+```{code-block}
+:caption: Output
+error: Your local changes to the following files would be overwritten by [merge|checkout]:
+        docker-compose.yml
+Please commit your changes or stash them before you [merge|switch branches].
+Aborting
+```
+
+Nothing has been changed yet: your files and your version are as they were.
+Commit your changes so they are kept, then update again.
+
+If `git branch --show-current` printed `work` (or another branch name):
 
 ```bash
-pip install -r requirements.txt  # or: uv pip install -r requirements.txt
+git commit -a -m "My local changes"
+git merge --no-edit |node_version|
 ```
+
+If it printed nothing, first create a branch so that your commit is not lost, then update with `git merge` (not `git switch --detach`):
+
+```bash
+git switch -c work
+git commit -a -m "My local changes"
+git merge --no-edit |node_version|
+```
+
+## Update Python dependencies
+
+With your virtual environment (or `conda` environment) activated, run:
+
+```bash
+uv pip install -r requirements.txt  # or: pip install -r requirements.txt
+```
+
+This only installs packages that are new or changed in this version.
 
 ## Restart the Fed-BioMed node
 
