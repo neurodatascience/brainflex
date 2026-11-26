@@ -31,3 +31,13 @@ fl_ready_dataset
 fedbiomed_node_part_1
 fedbiomed_node_part_2
 ```
+
+```{toctree}
+---
+hidden:
+includehidden:
+titlesonly:
+caption: Maintenance
+---
+updating_node
+```

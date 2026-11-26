@@ -64,3 +64,29 @@ myst_heading_anchors = 5
 # -- Copybutton configuration -------------------------------------------------
 copybutton_exclude = ".linenos, .gp"
 copybutton_selector = "div:not(.no-copybutton) > div.highlight > pre"
+
+# -- Version substitution -----------------------------------------------------
+# Replaced in all source and included files, including inside code blocks
+
+node_version = "v0.1.1"
+_SUBSTITUTIONS = {"|node_version|": node_version}
+
+
+def _substitute(content: list[str]) -> None:
+    """Replace substitution tokens in raw source content (in place)."""
+    for token, value in _SUBSTITUTIONS.items():
+        content[0] = content[0].replace(token, value)
+
+
+def _on_source_read(app, docname, content) -> None:
+    _substitute(content)
+
+
+def _on_include_read(app, relative_path, parent_docname, content) -> None:
+    _substitute(content)
+
+
+def setup(app) -> None:
+    """Register source substitution hooks."""
+    app.connect("source-read", _on_source_read)
+    app.connect("include-read", _on_include_read)
