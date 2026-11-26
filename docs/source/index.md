@@ -39,5 +39,5 @@ includehidden:
 titlesonly:
 caption: Maintenance
 ---
-updating_node
+node_update
 ```
