@@ -52,7 +52,3 @@ Only do this if you have already started the node (see [Fed-BioMed node: Part 1]
 docker compose down
 docker compose up -d
 ```
-
-```{note}
-If Git reports a conflict or refuses to update because of local changes, please reach out and we'll help.
-```
